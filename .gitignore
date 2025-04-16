@@ -1,0 +1,15 @@
+# Ignore build and cache directories
+__pycache__/
+.ruff_cache/
+.venv/
+*.egg-info/
+wheelhouse/
+build/
+dist/
+.pytest_cache/
+
+# Ignore local development files
+playground/
+
+# Ignore the generated databases
+database/
