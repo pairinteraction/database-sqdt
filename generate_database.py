@@ -13,6 +13,7 @@ import logging
 import os
 import shutil
 import sqlite3
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -53,6 +54,18 @@ def main() -> None:
     )
     parser.add_argument("species", help="The species to generate the database for.")
     parser.add_argument(
+        "--n-max",
+        default=120,
+        type=int,
+        help="The maximum principal quantum number n for the states to be included in the database.",
+    )
+    parser.add_argument(
+        "--directory",
+        default="database",
+        type=str,
+        help="The directory where the database will be saved.",
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -65,14 +78,16 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    species_folder = Path.cwd() / "database" / f"{args.species}_v{__version__}"
+    species_folder = Path(args.directory) / f"{args.species}_v{__version__}"
     if args.overwrite and species_folder.exists():
         shutil.rmtree(species_folder)
     species_folder.mkdir(parents=True, exist_ok=True)
     os.chdir(species_folder)
 
     configure_logging(args.log_level, args.species)
-    create_database_one_species(args.species)
+    time_start = time.perf_counter()
+    create_database_one_species(args.species, args.n_max)
+    logger.info("Time taken: %.2f seconds", time.perf_counter() - time_start)
 
 
 def configure_logging(log_level: str, species: str) -> None:
@@ -95,9 +110,9 @@ def configure_logging(log_level: str, species: str) -> None:
     root_logger.addHandler(file_handler)
 
 
-def create_database_one_species(species: str, n_max: int = 20) -> None:
+def create_database_one_species(species: str, n_max: int) -> None:
     """Create database for a given species."""
-    logger.info("Start creating database for: %s and version: v%s", species, __version__)
+    logger.info("Start creating database for %s and version v%s with n-max=%d", species, __version__, n_max)
 
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
