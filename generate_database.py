@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
+import ryd_numerov
 from ryd_numerov.angular.utils import clebsch_gordan_6j
 from ryd_numerov.rydberg import RydbergState
 
@@ -112,7 +113,9 @@ def configure_logging(log_level: str, species: str) -> None:
 
 def create_database_one_species(species: str, n_max: int) -> None:
     """Create database for a given species."""
-    logger.info("Start creating database for %s and version v%s with n-max=%d", species, __version__, n_max)
+    logger.info("Start creating database for %s and version v%s", species, __version__)
+    logger.info("n-max=%d", n_max)
+    logger.info("ryd_numerov.__version__=%s", ryd_numerov.__version__)
 
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
@@ -128,6 +131,8 @@ def create_database_one_species(species: str, n_max: int) -> None:
             table = pd.read_sql_query(f"SELECT * FROM {tkey}", conn)
             if tkey == "states":
                 table = table.astype({"is_j_total_momentum": bool, "is_calculated_with_mqdt": bool})
+                table["is_j_total_momentum"] = True
+                table["is_calculated_with_mqdt"] = False
             table.to_parquet(parquet_file, index=False)
             logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
             table.info(verbose=True)
