@@ -21,7 +21,7 @@ def get_sorted_list_of_states(species: str, n_max: int) -> list[RydbergState]:
             if not element.is_allowed_shell(n, l):
                 continue
             for j in np.arange(abs(l - element.s), l + element.s + 1):
-                list_of_states.append(RydbergState(species, n, l, j))  # noqa: PERF401
+                list_of_states.append(RydbergState(species, n, l, float(j)))  # noqa: PERF401
     return sorted(list_of_states, key=lambda x: x.get_energy("a.u."))
 
 
