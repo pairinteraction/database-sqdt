@@ -24,4 +24,4 @@ repos:
     rev: v1.15.0
     hooks:
       - id: mypy
-        additional_dependencies: ["ryd_numerov >= 0.5"]
+        additional_dependencies: ["ryd_numerov >= 0.5.3"]
