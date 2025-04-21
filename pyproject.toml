@@ -1,6 +1,36 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "generate-database-sqdt"
+dynamic = ["version"]
+description = "Generate the SQDT databases for the pairinteraction package by using the ryd-numerov package."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "ryd-numerov >= 0.5.3",
+  "pandas[pyarrow]>=2.2.3",
+]
+
+[project.optional-dependencies]
+mypy = [
+  "mypy >= 1.14",
+  "pandas-stubs >= 2.2.3"
+]
+
+[project.scripts]
+generate_database = "generate_database_sqdt:main.main"
+
+
+[tool.setuptools.dynamic]
+version = {attr = "generate_database_sqdt.__version__"}
+
+
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py310"
 extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
@@ -9,6 +39,8 @@ extend-ignore = [
   # # FIXME: we should fix these in the future
   "PLR0913",  # Too many arguments in function definition (... > 5)
   "D1",  # FIXME: remove once more docstrings are added
+  "TRY003",  # Avoid specifying long messages outside the exception class
+  "EM",  # Exceptions ...
   # We don't use the following rules
   "COM812",  # (missing-trailing-comma) incompatible with ruff format
   "D203",  # (incorrect-blank-line-before-class) incompatible with D211: no-blank-line-before-class

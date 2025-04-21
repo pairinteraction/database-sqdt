@@ -1,13 +1,3 @@
-# /// script
-# requires-python = ">=3.9"
-# dependencies = [
-#     "pandas[pyarrow]>=2.2.3",
-#     "ryd-numerov >= 0.5.1",
-# ]
-# ///
-
-__version__ = "1.1"
-
 import argparse
 import logging
 import os
@@ -23,7 +13,8 @@ import ryd_numerov
 from ryd_numerov.angular.utils import clebsch_gordan_6j
 from ryd_numerov.rydberg import RydbergState
 
-from utils import (
+from generate_database_sqdt import __version__
+from generate_database_sqdt.utils import (
     calc_matrix_element_one_pair,
     get_integrated_state,
     get_radial_matrix_element,
@@ -80,8 +71,11 @@ def main() -> None:
 
     args = parser.parse_args()
     species_folder = Path(args.directory) / f"{args.species}_v{__version__}"
-    if args.overwrite and species_folder.exists():
-        shutil.rmtree(species_folder)
+    if species_folder.exists():
+        if args.overwrite:
+            shutil.rmtree(species_folder)
+        else:
+            raise FileExistsError(f"The folder {species_folder} already exists. Use --overwrite to delete it.")
     species_folder.mkdir(parents=True, exist_ok=True)
     os.chdir(species_folder)
 
