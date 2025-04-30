@@ -50,7 +50,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'mypy'", specifier = ">=1.14" },
     { name = "pandas", extras = ["pyarrow"], specifier = ">=2.2.3" },
     { name = "pandas-stubs", marker = "extra == 'mypy'", specifier = ">=2.2.3" },
-    { name = "ryd-numerov", specifier = ">=0.5.3" },
+    { name = "ryd-numerov", specifier = ">=0.5.4" },
 ]
 provides-extras = ["mypy"]
 
@@ -398,7 +398,7 @@ wheels = [
 
 [[package]]
 name = "ryd-numerov"
-version = "0.5.3"
+version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numba" },
@@ -407,9 +407,9 @@ dependencies = [
     { name = "scipy" },
     { name = "sympy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/4d/3cf979661481688c21004eae44fc26e69183066ca23f398218bee2a600a5/ryd_numerov-0.5.3.tar.gz", hash = "sha256:54c5b2728daca0dec8bc8025675f21e1f6832f31112025313b0c9e3608edc601", size = 47814 }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/d6/a356afa7a998dc9d09e9667e4ce05a6c5638a32e828b8fffdece36108992/ryd_numerov-0.5.4.tar.gz", hash = "sha256:a5f4f5d2d103b3f4877fa49a4b0f75eeb67733e63add56c9d4b5dfa7c6887f23", size = 48389 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/d7/054e855807be7dd0786d9268608129424fedb7e69ef6132ca37c5f1ddb86/ryd_numerov-0.5.3-py3-none-any.whl", hash = "sha256:f14875aa3c2134fd49246b814dbf44774a956152c746a413f74d6f7df927cd18", size = 51119 },
+    { url = "https://files.pythonhosted.org/packages/f9/bb/08d4a58ad450cfd5df126ab0fb126e403d28706fcc094b115cf4c3c302e1/ryd_numerov-0.5.4-py3-none-any.whl", hash = "sha256:0b0a5afa69f8e3363262e27690e13cf5eca06dbef246c3a28645b38782c521ff", size = 52034 },
 ]
 
 [[package]]

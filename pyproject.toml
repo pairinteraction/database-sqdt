@@ -10,7 +10,7 @@ description = "Generate the SQDT databases for the pairinteraction package by us
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "ryd-numerov >= 0.5.3",
+  "ryd-numerov >= 0.5.4",
   "pandas[pyarrow]>=2.2.3",
 ]
 
