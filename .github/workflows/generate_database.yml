@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        species: [Li, Na, K, Rb, Cs, Sr_singlet, Sr_triplet]
+        species: [H_textbook, H, Li, Na, K, Rb, Cs, Sr_singlet, Sr_triplet]
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
