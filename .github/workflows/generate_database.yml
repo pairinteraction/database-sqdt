@@ -12,13 +12,13 @@ jobs:
         species: [Li, Na, K, Rb, Cs, Sr_singlet, Sr_triplet]
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
     - uses: actions/checkout@v4
     - name: Install uv
       uses: astral-sh/setup-uv@v5
     - name: Run generate_database.py
-      run: uv run generate_database ${{ matrix.species }} --directory database --n-max 120
+      run: uv run generate_database ${{ matrix.species }} --directory database --n-max 220
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
