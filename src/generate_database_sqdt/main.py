@@ -105,10 +105,12 @@ def configure_logging(log_level: str, species: str) -> None:
     root_logger.addHandler(file_handler)
 
 
-def create_database_one_species(species: str, n_max: int) -> None:
+def create_database_one_species(species: str, n_max: int, max_delta_n: int = 10, all_n_up_to: int = 30) -> None:
     """Create database for a given species."""
     logger.info("Start creating database for %s and version v%s", species, __version__)
     logger.info("n-max=%d", n_max)
+    logger.info("max_delta_n=%d", max_delta_n)
+    logger.info("all_n_up_to=%d", all_n_up_to)
     logger.info("ryd_numerov.__version__=%s", ryd_numerov.__version__)
 
     db_file = Path("database.db")
@@ -116,7 +118,7 @@ def create_database_one_species(species: str, n_max: int) -> None:
         conn.executescript((Path(__file__).parent / "database.sql").read_text(encoding="utf-8"))
         list_of_states = get_sorted_list_of_states(species, n_max)
         populate_states_table(list_of_states, conn)
-        populate_matrix_elements_table(list_of_states, conn)
+        populate_matrix_elements_table(list_of_states, conn, max_delta_n, all_n_up_to)
     logger.info("Size of %s: %.6f megabytes", db_file, db_file.stat().st_size * 1e-6)
 
     with sqlite3.connect(db_file) as conn:
@@ -187,21 +189,27 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
     logger.info("Created the 'states' table (%s rows)", conn.execute("SELECT COUNT(*) FROM states").fetchone()[0])
 
 
-def populate_matrix_elements_table(list_of_states: list[RydbergState], conn: "sqlite3.Connection") -> None:
+def populate_matrix_elements_table(
+    list_of_states: list[RydbergState], conn: "sqlite3.Connection", max_delta_n: int, all_n_up_to: int
+) -> None:
     k_angular_max = 3
 
     element = list_of_states[0].element
     list_of_qns = [(ids, state.n, state.l, state.j) for ids, state in enumerate(list_of_states)]
 
     # sort the states by l for more efficient caching
-    qns_sorted_by_l = sorted(list_of_qns, key=lambda x: (x[2], x[0]))
+    qns_sorted_by_l = sorted(list_of_qns, key=lambda x: (x[2], x[1], x[0]))
 
     matrix_elements: dict[str, list[tuple[int, int, float]]] = {tkey: [] for tkey in MATRIX_ELEMENTS_OF_INTEREST}
     for i, (id1, n1, l1, j1) in enumerate(qns_sorted_by_l):
         qns_filtered = filter(lambda x: x[2] - l1 <= k_angular_max, qns_sorted_by_l[i:])
         for id2, n2, l2, j2 in qns_filtered:
-            # TODO add condition to break? or simply remove afterwards all elements that are to small
-            # (with respect to matrix element and lifetime relevance!)
+            if n1 > all_n_up_to and abs(n1 - n2) > max_delta_n:
+                # If delta_n is larger than max_delta_n, we dont calculate the matrix elements anymore,
+                # since these are so small, that they are usually not relevant for further calculations
+                # However, we keep all dipole interactions with small n (we choose all_n_up_to as a cutoff)
+                # since these are relevant for the spontaneous decay rates
+                continue
 
             id_tuple = (id1, id2) if id1 <= id2 else (id2, id1)
             qns = (n1, l1, j1, n2, l2, j2) if id1 <= id2 else (n2, l2, j2, n1, l1, j1)
