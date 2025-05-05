@@ -16,9 +16,9 @@ from ryd_numerov.rydberg import RydbergState
 from generate_database_sqdt import __version__
 from generate_database_sqdt.utils import (
     calc_matrix_element_one_pair,
-    get_integrated_state,
-    get_radial_matrix_element,
-    get_reduced_angular_matrix_element,
+    calc_radial_matrix_element_cached,
+    calc_reduced_angular_matrix_element_cached,
+    get_rydberg_state_cached,
     get_sorted_list_of_states,
 )
 
@@ -81,7 +81,7 @@ def main() -> None:
 
     configure_logging(args.log_level, args.species)
     time_start = time.perf_counter()
-    create_database_one_species(args.species, args.n_max)
+    create_tables_for_one_species(args.species, args.n_max)
     logger.info("Time taken: %.2f seconds", time.perf_counter() - time_start)
 
 
@@ -105,7 +105,7 @@ def configure_logging(log_level: str, species: str) -> None:
     root_logger.addHandler(file_handler)
 
 
-def create_database_one_species(species: str, n_max: int, max_delta_n: int = 10, all_n_up_to: int = 30) -> None:
+def create_tables_for_one_species(species: str, n_max: int, max_delta_n: int = 10, all_n_up_to: int = 30) -> None:
     """Create database for a given species."""
     logger.info("Start creating database for %s and version v%s", species, __version__)
     logger.info("n-max=%d", n_max)
@@ -135,9 +135,11 @@ def create_database_one_species(species: str, n_max: int, max_delta_n: int = 10,
             with Path(f"{species}_v{__version__}.log").open("a") as buf:
                 table.info(buf=buf)
 
-    logger.info("get_reduced_angular_matrix_element: %s", get_reduced_angular_matrix_element.cache_info())
-    logger.info("get_radial_matrix_element: %s", get_radial_matrix_element.cache_info())
-    logger.info("get_integrated_state: %s", get_integrated_state.cache_info())
+    logger.info(
+        "calc_reduced_angular_matrix_element_cached: %s", calc_reduced_angular_matrix_element_cached.cache_info()
+    )
+    logger.info("calc_radial_matrix_element_cached: %s", calc_radial_matrix_element_cached.cache_info())
+    logger.info("get_rydberg_state_cached: %s", get_rydberg_state_cached.cache_info())
 
 
 def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Connection") -> None:

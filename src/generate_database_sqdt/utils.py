@@ -39,13 +39,13 @@ def calc_matrix_element_one_pair(
 
     matrix_elements: dict[str, float] = {}
     for tkey, (operator, k_radial, k_angular) in matrix_elements_of_interest.items():
-        angular_matrix_element_au = get_reduced_angular_matrix_element(
+        angular_matrix_element_au = calc_reduced_angular_matrix_element_cached(
             element.s, l1, j1, element.s, l2, j2, operator, k_angular
         )
         if angular_matrix_element_au == 0:
             continue
 
-        radial_matrix_element_au = get_radial_matrix_element(species, n1, l1, j1, n2, l2, j2, k_radial)
+        radial_matrix_element_au = calc_radial_matrix_element_cached(species, n1, l1, j1, n2, l2, j2, k_radial)
         if radial_matrix_element_au == 0:
             continue
 
@@ -58,7 +58,7 @@ def calc_matrix_element_one_pair(
 
 # since we sort the states by l, before calculating the matrix elements a rather low number of cache size is sufficient
 @lru_cache(maxsize=2_000)
-def get_reduced_angular_matrix_element(
+def calc_reduced_angular_matrix_element_cached(
     s1: int, l1: int, j1: float, s2: int, l2: int, j2: float, operator: "OperatorType", k_angular: int
 ) -> float:
     return calc_reduced_angular_matrix_element(s1, l1, j1, s2, l2, j2, operator, k_angular)
@@ -66,22 +66,22 @@ def get_reduced_angular_matrix_element(
 
 # this cache is basically only used within one call of get_matrix_element
 @lru_cache(maxsize=100)
-def get_radial_matrix_element(
+def calc_radial_matrix_element_cached(
     species: str, n1: int, l1: int, j1: float, n2: int, l2: int, j2: float, k_radial: int
 ) -> float:
     if (n1, l1, j1) > (n2, l2, j2):  # for better use of the cache
-        return get_radial_matrix_element(species, n2, l2, j2, n1, l1, j1, k_radial)
+        return calc_radial_matrix_element_cached(species, n2, l2, j2, n1, l1, j1, k_radial)
 
-    state1 = get_integrated_state(species, n1, l1, j1)
-    state2 = get_integrated_state(species, n2, l2, j2)
+    state1 = get_rydberg_state_cached(species, n1, l1, j1)
+    state2 = get_rydberg_state_cached(species, n2, l2, j2)
     return calc_radial_matrix_element(state1, state2, k_radial)
 
 
 # Cache size should be one the order of N_MAX * 4 * 2
 # (since for each initial state we loop over all l' = l, l+1, l+2 and l+3 final states (and all j final))
 @lru_cache(maxsize=2_000)
-def get_integrated_state(species: str, n: int, l: int, j: float) -> RydbergState:
-    """Get the integrated state."""
+def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergState:
+    """Get the cached rydberg state (where the wavefunction was already calculated)."""
     state = RydbergState(species, n, l, j)
     state.create_wavefunction()
     return state
