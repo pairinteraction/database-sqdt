@@ -129,7 +129,7 @@ def create_tables_for_one_species(species: str, n_max: int, max_delta_n: int = 1
                 table = table.astype({"is_j_total_momentum": bool, "is_calculated_with_mqdt": bool})
                 table["is_j_total_momentum"] = True
                 table["is_calculated_with_mqdt"] = False
-            table.to_parquet(parquet_file, index=False)
+            table.to_parquet(parquet_file, index=False, compression="zstd")
             logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
             table.info(verbose=True)
             with Path(f"{species}_v{__version__}.log").open("a") as buf:
