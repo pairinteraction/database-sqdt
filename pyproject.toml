@@ -8,6 +8,8 @@ name = "generate-database-sqdt"
 dynamic = ["version"]
 description = "Generate the SQDT databases for the pairinteraction package by using the ryd-numerov package."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.txt"]
 requires-python = ">=3.10"
 dependencies = [
   "ryd-numerov >= 0.5.4",
