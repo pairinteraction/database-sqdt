@@ -1,8 +1,9 @@
 name: Generate Databases
 
-on:  # TODO: change this to only version tags
+on:
   push:
     branches: ["*"]
+    tags: ["v*.*"]
 
 jobs:
   run-generate-database:
@@ -12,7 +13,7 @@ jobs:
         species: [H_textbook, H, Li, Na, K, Rb, Cs, Sr_singlet, Sr_triplet]
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 300
     steps:
     - uses: actions/checkout@v4
     - name: Install uv
@@ -26,3 +27,39 @@ jobs:
         path: |
           database/*/*.parquet
           database/*/*.log
+
+  github-release:
+    name: Release database files to github releases
+    if: startsWith(github.ref, 'refs/tags/')  # only release to github on tag pushes
+    needs: [run-generate-database]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download all the database files
+      uses: actions/download-artifact@v4
+      with:
+        path: database
+        pattern: database-*
+        merge-multiple: true
+
+    - name: Zip database folders
+      working-directory: database/
+      run: |
+        VERSION_TAG=${GITHUB_REF#refs/tags/}
+        for dir in */; do
+          if [[ "$dir" != *"$VERSION_TAG/" ]]; then
+            echo "Error: Version mismatch between folder $dir and version tag $VERSION_TAG"
+            exit 1
+          fi
+          zip -r "${dir%/}.zip" "$dir"
+        done
+
+    - name: Release zipped database folders
+      uses: softprops/action-gh-release@v2
+      with:
+        files: database/*.zip
+        draft: true
