@@ -25,7 +25,15 @@ from generate_database_sqdt.utils import (
 if TYPE_CHECKING:
     from ryd_numerov.units import OperatorType
 
+
+class ErrorsAsExceptionsHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.levelno >= logging.ERROR:
+            raise RuntimeError(record.getMessage())
+
+
 logger = logging.getLogger(__name__)
+
 
 MATRIX_ELEMENTS_OF_INTEREST: dict[str, tuple["OperatorType", int, int]] = {
     # key: (operator, k_radial, k_angular)  # noqa: ERA001
@@ -64,6 +72,11 @@ def main() -> None:
         help="set the logging level (default: INFO)",
     )
     parser.add_argument(
+        "--errors-as-exceptions",
+        action="store_true",
+        help="Treat errors in ryd_numerov as exceptions.",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Delete the species folder if it exists and create a new one.",
@@ -79,13 +92,13 @@ def main() -> None:
     species_folder.mkdir(parents=True, exist_ok=True)
     os.chdir(species_folder)
 
-    configure_logging(args.log_level, args.species)
+    configure_logging(args.log_level, args.species, errors_as_exceptions=args.errors_as_exceptions)
     time_start = time.perf_counter()
     create_tables_for_one_species(args.species, args.n_max)
     logger.info("Time taken: %.2f seconds", time.perf_counter() - time_start)
 
 
-def configure_logging(log_level: str, species: str) -> None:
+def configure_logging(log_level: str, species: str, *, errors_as_exceptions: bool) -> None:
     """Initialize the logger."""
     root_logger = logging.getLogger()
     if root_logger.hasHandlers():
@@ -103,6 +116,10 @@ def configure_logging(log_level: str, species: str) -> None:
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(file_formatter)
     root_logger.addHandler(file_handler)
+
+    if errors_as_exceptions:
+        logging.getLogger("ryd_numerov").addHandler(ErrorsAsExceptionsHandler())
+        logger.addHandler(ErrorsAsExceptionsHandler())
 
 
 def create_tables_for_one_species(species: str, n_max: int, max_delta_n: int = 10, all_n_up_to: int = 30) -> None:
