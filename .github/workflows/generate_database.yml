@@ -11,6 +11,11 @@ jobs:
       fail-fast: false
       matrix:
         species: [H_textbook, H, Li, Na, K, Rb, Cs, Sr_singlet, Sr_triplet]
+        include:
+          - species: Sr_singlet
+            extra_args: "--n-min 11"
+          - species: Sr_triplet
+            extra_args: "--n-min 11"
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
@@ -19,7 +24,7 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v6
     - name: Run generate_database.py
-      run: uv run generate_database ${{ matrix.species }} --errors-as-exceptions --directory database --n-max 220
+      run: uv run generate_database ${{ matrix.species }} --errors-as-exceptions --directory database --n-max 220 ${{ matrix.extra_args }}
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
