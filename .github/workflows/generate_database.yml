@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v6
     - name: Run generate_database.py
       run: uv run generate_database ${{ matrix.species }} --directory database --n-max 220
     - name: Upload artifacts
