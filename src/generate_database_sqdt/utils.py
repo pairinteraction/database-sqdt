@@ -12,11 +12,11 @@ if TYPE_CHECKING:
     from ryd_numerov.units import OperatorType
 
 
-def get_sorted_list_of_states(species: str, n_max: int) -> list[RydbergState]:
+def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[RydbergState]:
     """Create a list of quantum numbers sorted by their state energies."""
     element = ryd_numerov.elements.Element.from_species(species)
     list_of_states: list[RydbergState] = []
-    for n in range(1, n_max + 1):
+    for n in range(n_min, n_max + 1):
         for l in range(n):
             if not element.is_allowed_shell(n, l):
                 continue
