@@ -253,7 +253,7 @@ def populate_matrix_elements_table(
     for i, (id1, n1, l1, j1) in enumerate(qns_sorted_by_l):
         qns_filtered = filter(lambda x: x[2] - l1 <= k_angular_max, qns_sorted_by_l[i:])
         for id2, n2, l2, j2 in qns_filtered:
-            if n1 > all_n_up_to and abs(n1 - n2) > max_delta_n:
+            if all(n > all_n_up_to for n in [n1, n2]) and abs(n1 - n2) > max_delta_n:
                 # If delta_n is larger than max_delta_n, we dont calculate the matrix elements anymore,
                 # since these are so small, that they are usually not relevant for further calculations
                 # However, we keep all dipole interactions with small n (we choose all_n_up_to as a cutoff)
