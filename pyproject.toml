@@ -16,6 +16,9 @@ dependencies = [
   "pandas[pyarrow]>=2.2.3",
 ]
 
+[tool.uv.sources]
+ryd-numerov = { git = "https://github.com/pairinteraction/ryd-numerov", rev = "bff47555d962a1d010739837c212aac2ed1ef006" }
+
 [project.optional-dependencies]
 mypy = [
   "mypy >= 1.14",
