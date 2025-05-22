@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        species: [H_textbook, H, Li, Na, K, Rb, Cs, Sr88_singlet, Sr88_triplet]
+        species: [misc, H_textbook, H, Li, Na, K, Rb, Cs, Sr88_singlet, Sr88_triplet]
         include:
           - extra_args: "--warnings-as-exceptions"
           - species: Cs
