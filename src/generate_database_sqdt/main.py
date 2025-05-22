@@ -14,6 +14,7 @@ from ryd_numerov.angular.utils import clebsch_gordan_6j
 from ryd_numerov.rydberg import RydbergState
 
 from generate_database_sqdt import __version__
+from generate_database_sqdt.generate_misc import create_tables_for_misc
 from generate_database_sqdt.utils import (
     calc_matrix_element_one_pair,
     calc_radial_matrix_element_cached,
@@ -107,6 +108,9 @@ def main() -> None:
 
     args = parser.parse_args()
     species_folder = Path(args.directory) / f"{args.species}_v{__version__}"
+    if args.species == "misc":
+        species_folder = Path(args.directory) / f"misc_v{__version__}"
+
     if species_folder.exists():
         if args.overwrite:
             shutil.rmtree(species_folder)
@@ -122,7 +126,10 @@ def main() -> None:
         known_exceptions=args.known_exceptions,
     )
     time_start = time.perf_counter()
-    create_tables_for_one_species(args.species, args.n_min, args.n_max)
+    if args.species == "misc":
+        create_tables_for_misc(f_max=args.n_max, kappa_max=3)
+    else:
+        create_tables_for_one_species(args.species, args.n_min, args.n_max)
     logger.info("Time taken: %.2f seconds", time.perf_counter() - time_start)
 
 

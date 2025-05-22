@@ -5,6 +5,7 @@ import numpy as np
 import ryd_numerov
 from ryd_numerov import RydbergState
 from ryd_numerov.angular import calc_reduced_angular_matrix_element
+from ryd_numerov.angular.utils import calc_wigner_3j, minus_one_pow
 from ryd_numerov.elements import Element
 from ryd_numerov.radial import calc_radial_matrix_element
 
@@ -85,3 +86,19 @@ def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergS
     state = RydbergState(species, n, l, j)
     state.create_wavefunction()
     return state
+
+
+@lru_cache(maxsize=10_000_000)
+def calc_wigner_3j_cached(j_1: float, j_2: float, j_3: float, m_1: float, m_2: float, m_3: float) -> float:
+    if not j_1 <= j_2 <= j_3:  # better use of caching
+        args_nd = np.array([j_1, j_2, j_3, m_1, m_2, m_3])
+        inds = np.argsort(args_nd[:3])
+        wigner = calc_wigner_3j_cached(*args_nd[:3][inds], *args_nd[3:][inds])
+        if (inds[1] - inds[0]) in [1, -2]:
+            return wigner
+        return minus_one_pow(j_1 + j_2 + j_3) * wigner
+
+    if m_3 < 0 or (m_3 == 0 and m_2 < 0):  # better use of caching
+        return minus_one_pow(j_1 + j_2 + j_3) * calc_wigner_3j_cached(j_1, j_2, j_3, -m_1, -m_2, -m_3)
+
+    return calc_wigner_3j(j_1, j_2, j_3, m_1, m_2, m_3)
