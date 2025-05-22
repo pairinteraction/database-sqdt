@@ -10,9 +10,9 @@ uv run generate_database <species> --n-max 220
 ```
 
 ## Generate a new release
-To generate a new release with all the important tables, simply create and push a new annotated tag with a tag name of the form "v*.*" .
+To generate a new release with all the important tables, simply create and push a new annotated tag with a tag name of the form `v*.*` .
 This will run the `generate_database.yml` workflow, where first all tables are created (this happens for all commits, not only tags),
-and then in addition uploads the zipped versions of the tables to a new release with name "v*.*" .
+and then in addition uploads the zipped versions of the tables to a new release with name `v*.*` .
 The release is created in draft mode, so you can double-check, that all database tables are included and optionally add a release text.
 Once you are happy with the release draft, don't forget to publish the release.
 
@@ -23,5 +23,5 @@ To check the performance of this tool and to look for bottlenecks in the code, y
 To do so install py-spy from pip and then run the following command:
 
 ```bash
-py-spy record -o profiling.svg -- python3 generate_database.py <species> --n-max <n-max>
+py-spy record -o profiling.svg -- generate_database <species> --n-max <n-max>
 ```

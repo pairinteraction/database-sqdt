@@ -146,7 +146,7 @@ def configure_logging(log_level: str, species: str, *, warnings_as_exceptions: b
     root_logger.addHandler(stream_handler)
 
     file_formatter = logging.Formatter("%(levelname)s: %(message)s")
-    log_file = Path(f"{species}_v{__version__}.log")
+    log_file = Path(f"{species}.log")
     log_file.parent.mkdir(parents=True, exist_ok=True)
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(file_formatter)
@@ -186,7 +186,7 @@ def create_tables_for_one_species(
             table.to_parquet(parquet_file, index=False, compression="zstd")
             logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
             table.info(verbose=True)
-            with Path(f"{species}_v{__version__}.log").open("a") as buf:
+            with Path(f"{species}.log").open("a") as buf:
                 table.info(buf=buf)
 
     logger.info(
