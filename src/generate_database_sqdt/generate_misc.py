@@ -31,7 +31,7 @@ def create_tables_for_misc(f_max: float, kappa_max: int) -> None:
         table.to_parquet(parquet_file, index=False, compression="zstd")
         logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
         table.info(verbose=True)
-        with Path(f"wigner_v{__version__}.log").open("a") as buf:
+        with Path("wigner.log").open("a") as buf:
             table.info(buf=buf)
 
     logger.info("calc_wigner_3j_cached: %s", calc_wigner_3j_cached.cache_info())
