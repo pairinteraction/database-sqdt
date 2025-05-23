@@ -8,16 +8,56 @@ from generate_database_sqdt.main import MATRIX_ELEMENTS_OF_INTEREST
 
 
 def main() -> None:
-    new_path = Path("Rb_v1.1")
-    old_path = Path("Rb_v1.0")
+    # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE (e.g. "Rb_v1.1" and "Rb_v1.0")
+    new_path = Path("misc_v1.1")
+    old_path = Path("misc_v1.0")
 
-    compare_states_table(new_path / "states.parquet", old_path / "states.parquet")
+    if "misc" in new_path.name and "misc" in old_path.name:
+        compare_wigner_table(new_path / "wigner.parquet", old_path / "wigner.parquet")
 
-    for table_name in MATRIX_ELEMENTS_OF_INTEREST:
-        compare_matrix_elements_table(
-            new_path / f"{table_name}.parquet",
-            old_path / f"{table_name}.parquet",
-        )
+    else:
+        compare_states_table(new_path / "states.parquet", old_path / "states.parquet")
+        for table_name in MATRIX_ELEMENTS_OF_INTEREST:
+            compare_matrix_elements_table(
+                new_path / f"{table_name}.parquet",
+                old_path / f"{table_name}.parquet",
+            )
+
+
+def compare_wigner_table(new_file: Path, old_file: Path) -> None:
+    new = pd.read_parquet(new_file)
+    new = new.sort_values(by=["f_initial", "f_final", "kappa", "q", "m_initial", "m_final"])
+    new = new.set_index(["f_initial", "f_final", "m_initial", "m_final", "kappa", "q"])
+
+    old = pd.read_parquet(old_file)
+    old = old.sort_values(by=["f_initial", "f_final", "kappa", "q", "m_initial", "m_final"])
+    old = old.set_index(["f_initial", "f_final", "m_initial", "m_final", "kappa", "q"])
+
+    # Find entries in new that don't exist in old
+    new_only = new[~new.index.isin(old.index)]
+    print(f"Entries in new that don't exist in old ({len(new_only)}/{len(new)} rows):")
+    if not new_only.empty:
+        print(new_only)
+    else:
+        print("None")
+    print()
+
+    # Find entries in old that don't exist in new
+    old_only = old[~old.index.isin(new.index)]
+    print(f"Entries in old that don't exist in new ({len(old_only)}/{len(old)} rows):")
+    if not old_only.empty:
+        print(old_only)
+    else:
+        print("None")
+    print()
+
+    # Compare the matching entries
+    new = new.drop(new_only.index)
+    old = old.drop(old_only.index)
+
+    diff = new.compare(old)
+    print(f"Differences in wigner table values ({len(diff)}/{len(new)} rows):")
+    print(diff)
 
 
 def compare_states_table(new_file: Path, old_file: Path, rtol: float = 1e-5, atol: float = 1e-5) -> None:
