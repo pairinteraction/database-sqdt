@@ -36,7 +36,6 @@ jobs:
         name: database-${{ matrix.species }}
         path: |
           database/*/*.parquet
-          database/*/*.log
 
   github-release:
     name: Release database files to github releases
