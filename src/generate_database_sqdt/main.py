@@ -115,7 +115,7 @@ def main() -> None:
         if args.overwrite:
             shutil.rmtree(species_folder)
         else:
-            raise FileExistsError(f"The folder {species_folder} already exists. Use --overwrite to delete it.")
+            raise FileExistsError(f"The folder {species_folder} already exists. Use --overwrite to overwrite it.")
     species_folder.mkdir(parents=True, exist_ok=True)
     os.chdir(species_folder)
 
@@ -185,9 +185,10 @@ def create_tables_for_one_species(
                 table["is_calculated_with_mqdt"] = False
             table.to_parquet(parquet_file, index=False, compression="zstd")
             logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
-            table.info(verbose=True)
-            with Path(f"{species}.log").open("a") as buf:
-                table.info(buf=buf)
+            if logging.getLogger().isEnabledFor(logging.INFO):
+                table.info(verbose=True)
+                with Path(f"{species}.log").open("a") as buf:
+                    table.info(buf=buf)
 
     logger.info(
         "calc_reduced_angular_matrix_element_cached: %s", calc_reduced_angular_matrix_element_cached.cache_info()
