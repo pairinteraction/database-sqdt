@@ -15,12 +15,12 @@ jobs:
         species: [misc, H, Li, Na, K, Rb, Cs, Sr88_singlet, Sr88_triplet]
         include:
           - extra_args: "--warnings-as-exceptions"
-          - species: Cs
-            extra_args: "--warnings-as-exceptions --known-exceptions 1" # (Cs, n=5, l=2, j=1.5) is not converging very well
-          - species: Sr88_singlet  # no warnings as exceptions, due to bad convergence
-            extra_args: "--n-min 11"  # states with n <= 11 are converging very bad
-          - species: Sr88_triplet  # no warnings as exceptions, due to bad convergence
-            extra_args: "--n-min 11"  # states with n <= 11 are converging very bad
+          - species: Sr88_singlet
+            extra_args: ""  # no warnings as exceptions, due to bad convergence
+            # actually, Sr88_singlet most of the time converges quite well,
+            # only for a few (mostly low-lying) states it has some issues
+          - species: Sr88_triplet
+            extra_args: ""  # no warnings as exceptions, due to bad convergence
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
