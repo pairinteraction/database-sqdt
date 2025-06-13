@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-ryd-numerov = { git = "https://github.com/pairinteraction/ryd-numerov", rev = "bff47555d962a1d010739837c212aac2ed1ef006" }
+ryd-numerov = { git = "https://github.com/pairinteraction/ryd-numerov", rev = "7361ab7bf99d4ac477c0e7e325c41d1b16f41212" }
 
 [project.optional-dependencies]
 mypy = [
