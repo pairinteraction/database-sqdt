@@ -2,11 +2,10 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
-import ryd_numerov
 from ryd_numerov import RydbergState
 from ryd_numerov.angular import calc_reduced_angular_matrix_element
 from ryd_numerov.angular.utils import calc_wigner_3j, minus_one_pow
-from ryd_numerov.elements import Element
+from ryd_numerov.elements import BaseElement
 from ryd_numerov.radial import calc_radial_matrix_element
 
 if TYPE_CHECKING:
@@ -15,7 +14,7 @@ if TYPE_CHECKING:
 
 def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[RydbergState]:
     """Create a list of quantum numbers sorted by their state energies."""
-    element = ryd_numerov.elements.Element.from_species(species)
+    element = BaseElement.from_species(species)
     list_of_states: list[RydbergState] = []
     for n in range(n_min, n_max + 1):
         for l in range(n):
@@ -36,7 +35,7 @@ def calc_matrix_element_one_pair(
     j2: float,
     matrix_elements_of_interest: dict[str, tuple["OperatorType", int, int]],
 ) -> dict[str, float]:
-    element = Element.from_species(species)
+    element = BaseElement.from_species(species)
 
     matrix_elements: dict[str, float] = {}
     for tkey, (operator, k_radial, k_angular) in matrix_elements_of_interest.items():
