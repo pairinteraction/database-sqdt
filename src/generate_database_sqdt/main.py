@@ -202,7 +202,7 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
     for ids, state in enumerate(list_of_states):
         std_j_ryd: float
         exp_j_ryd: float
-        if state.element.is_alkali:
+        if state.element.s == 1 / 2:
             exp_j_ryd = state.j
             std_j_ryd = 0
         else:  # state.s in [0, 1]
@@ -215,15 +215,17 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
             std_j_ryd_squared = sum((j1 - exp_j_ryd) ** 2 * coeff**2 for j1, coeff in coefficients.items())
             std_j_ryd = 0 if std_j_ryd_squared < 1e-12 else np.sqrt(std_j_ryd_squared)  # noqa: PLR2004
 
+        n_star = state.element.calc_n_star(state.n, state.l, state.j)
+
         states_data.append(
             (
                 ids,  # id, will be set later
                 state.element.get_ionization_energy() + state.get_energy("a.u."),  # energy
                 (-1) ** state.l,  # parity = (-1)^l
                 state.n,  # n: quantum number
-                state.quantum_defect.n_star,  # nu = NStar for sqdt
+                n_star,  # nu = NStar for sqdt
                 state.j,  # f: quantum number, neglect hyperfine splitting -> f = j
-                state.quantum_defect.n_star,  # exp_nui = nu for sqdt
+                n_star,  # exp_nui = nu for sqdt
                 state.l,  # exp_l = l
                 state.j,  # exp_j = j
                 state.s,  # exp_s = s
