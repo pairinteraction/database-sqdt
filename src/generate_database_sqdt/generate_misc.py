@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import ryd_numerov
 
-from generate_database_sqdt import __version__
+from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.utils import calc_wigner_3j_cached
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def create_tables_for_misc(f_max: float, kappa_max: int) -> None:
 
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
-        conn.executescript((Path(__file__).parent / "database.sql").read_text(encoding="utf-8"))
+        conn.executescript(database_sql_file.read_text(encoding="utf-8"))
         populate_wigner_table(f_max, kappa_max, conn)
     logger.info("Size of %s: %.6f megabytes", db_file, db_file.stat().st_size * 1e-6)
 

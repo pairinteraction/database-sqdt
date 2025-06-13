@@ -13,7 +13,7 @@ import ryd_numerov
 from ryd_numerov.angular.utils import clebsch_gordan_6j
 from ryd_numerov.rydberg import RydbergState
 
-from generate_database_sqdt import __version__
+from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.generate_misc import create_tables_for_misc
 from generate_database_sqdt.utils import (
     calc_matrix_element_one_pair,
@@ -169,7 +169,7 @@ def create_tables_for_one_species(
 
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
-        conn.executescript((Path(__file__).parent / "database.sql").read_text(encoding="utf-8"))
+        conn.executescript(database_sql_file.read_text(encoding="utf-8"))
         list_of_states = get_sorted_list_of_states(species, n_min, n_max)
         populate_states_table(list_of_states, conn)
         populate_matrix_elements_table(list_of_states, conn, max_delta_n, all_n_up_to)
