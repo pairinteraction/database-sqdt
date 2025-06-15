@@ -1,4 +1,4 @@
 extend = "../pyproject.toml"
-extend-ignore = [
+lint.extend-ignore = [
     "T201",  # allow print
 ]
