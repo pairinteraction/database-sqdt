@@ -30,16 +30,13 @@ if TYPE_CHECKING:
 class WarningsAsExceptionsHandler(logging.Handler):
     """Custom logging handler to raise exceptions for errors."""
 
-    def __init__(self, known_exceptions: int = 0) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.known_exceptions = known_exceptions
         self.warnings_count = 0
 
     def emit(self, record: logging.LogRecord) -> None:
         if record.levelno >= logging.WARNING:
-            if self.warnings_count >= self.known_exceptions:
-                raise RuntimeError(record.getMessage())
-            self.warnings_count += 1
+            raise RuntimeError(record.getMessage())
 
 
 logger = logging.getLogger(__name__)
@@ -95,12 +92,6 @@ def main() -> None:
         help="Treat warnings in ryd_numerov as exceptions.",
     )
     parser.add_argument(
-        "--known-exceptions",
-        default=0,
-        type=int,
-        help="Number of known exceptions, that should be ignored and not treated as exceptions.",
-    )
-    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Delete the species folder if it exists and create a new one.",
@@ -123,7 +114,6 @@ def main() -> None:
         args.log_level,
         args.species,
         warnings_as_exceptions=args.warnings_as_exceptions,
-        known_exceptions=args.known_exceptions,
     )
     time_start = time.perf_counter()
     if args.species == "misc":
@@ -133,7 +123,7 @@ def main() -> None:
     logger.info("Time taken: %.2f seconds", time.perf_counter() - time_start)
 
 
-def configure_logging(log_level: str, species: str, *, warnings_as_exceptions: bool, known_exceptions: int) -> None:
+def configure_logging(log_level: str, species: str, *, warnings_as_exceptions: bool) -> None:
     """Initialize the logger."""
     root_logger = logging.getLogger()
     if root_logger.hasHandlers():
@@ -153,7 +143,7 @@ def configure_logging(log_level: str, species: str, *, warnings_as_exceptions: b
     root_logger.addHandler(file_handler)
 
     if warnings_as_exceptions:
-        logging.getLogger().addHandler(WarningsAsExceptionsHandler(known_exceptions))
+        logging.getLogger().addHandler(WarningsAsExceptionsHandler())
 
 
 def create_tables_for_one_species(
