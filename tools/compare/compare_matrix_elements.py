@@ -19,6 +19,9 @@ def main() -> None:
 
     print(f"Comparing matrix elements tables:\n  New: {new_path}\n  Old: {old_path}")
     for table_name in TABLE_NAMES:
+        if not (new_path / f"{table_name}.parquet").exists() or not (old_path / f"{table_name}.parquet").exists():
+            print(f"\nSkipping {table_name} as it does not exist in either the new or the old path.")
+            continue
         compare_matrix_elements_table(table_name, new_path, old_path, max_delta_n=3, min_n=16, verbose=False)
 
 
@@ -53,9 +56,13 @@ def compare_matrix_elements_table(
         "old": pd.read_parquet(old_path / f"{table_name}.parquet"),
     }
 
+    multi_index_columns = ["n", "exp_l", "exp_j"]
+    if "mqdt" in str(new_path):
+        multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
+
     for key, state in states_dict.items():
         # Create a new unique index for each state based on quantum numbers
-        state["unique_id"] = state.apply(lambda row: f"{row['n']}_{row['exp_l']}_{row['exp_j']}", axis=1)
+        state["unique_id"] = state.apply(lambda row: "_".join([str(row[col]) for col in multi_index_columns]), axis=1)
         id_to_newid = dict(zip(state["id"], state["unique_id"], strict=True))
         id_to_n = dict(zip(state["id"], state["n"], strict=True))
 

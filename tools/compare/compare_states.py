@@ -41,12 +41,17 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     new = pd.read_parquet(new_path / "states.parquet")
     if min_n > 1:
         new = new[new["n"] >= min_n].copy()
-    new = new.set_index(["n", "exp_l", "exp_j"], verify_integrity=True)
+
+    multi_index_columns = ["n", "exp_l", "exp_j"]
+    if "mqdt" in str(new_path):
+        multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
+
+    new = new.set_index(multi_index_columns, verify_integrity=True)
 
     old = pd.read_parquet(old_path / "states.parquet")
     if min_n > 1:
         old = old[old["n"] >= min_n].copy()
-    old = old.set_index(["n", "exp_l", "exp_j"], verify_integrity=True)
+    old = old.set_index(multi_index_columns, verify_integrity=True)
 
     # Check if both tables have the same states
     new_states = set(new.index)
