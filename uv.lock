@@ -292,7 +292,7 @@ requires-dist = [
     { name = "pairinteraction", specifier = ">=2.1" },
     { name = "pandas", extras = ["pyarrow"], specifier = ">=2.2.3" },
     { name = "pandas-stubs", marker = "extra == 'mypy'", specifier = ">=2.2.3" },
-    { name = "ryd-numerov", git = "https://github.com/pairinteraction/ryd-numerov?rev=7361ab7bf99d4ac477c0e7e325c41d1b16f41212" },
+    { name = "ryd-numerov", git = "https://github.com/pairinteraction/ryd-numerov?rev=ce4ebc4b41e2b762451ba74cbb9ed8d6bbaff2d6" },
 ]
 provides-extras = ["mypy"]
 
@@ -1469,9 +1469,10 @@ wheels = [
 
 [[package]]
 name = "ryd-numerov"
-version = "0.6.0"
-source = { git = "https://github.com/pairinteraction/ryd-numerov?rev=7361ab7bf99d4ac477c0e7e325c41d1b16f41212#7361ab7bf99d4ac477c0e7e325c41d1b16f41212" }
+version = "0.7.0"
+source = { git = "https://github.com/pairinteraction/ryd-numerov?rev=ce4ebc4b41e2b762451ba74cbb9ed8d6bbaff2d6#ce4ebc4b41e2b762451ba74cbb9ed8d6bbaff2d6" }
 dependencies = [
+    { name = "mpmath" },
     { name = "numba" },
     { name = "numpy" },
     { name = "pint" },
