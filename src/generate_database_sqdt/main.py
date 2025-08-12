@@ -206,7 +206,7 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
             std_j_ryd_squared = sum((j1 - exp_j_ryd) ** 2 * coeff**2 for j1, coeff in coefficients.items())
             std_j_ryd = 0 if std_j_ryd_squared < 1e-12 else np.sqrt(std_j_ryd_squared)  # noqa: PLR2004
 
-        n_star = state.element.calc_n_star(state.n, state.l, state.j)
+        n_star = state.get_n_star()
 
         states_data.append(
             (
