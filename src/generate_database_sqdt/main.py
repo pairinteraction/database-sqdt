@@ -16,8 +16,8 @@ from ryd_numerov.rydberg import RydbergState
 from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.generate_misc import create_tables_for_misc
 from generate_database_sqdt.utils import (
+    _calc_radial_matrix_element_cached,
     calc_matrix_element_one_pair,
-    calc_radial_matrix_element_cached,
     calc_reduced_angular_matrix_element_cached,
     get_rydberg_state_cached,
     get_sorted_list_of_states,
@@ -183,7 +183,7 @@ def create_tables_for_one_species(
     logger.info(
         "calc_reduced_angular_matrix_element_cached: %s", calc_reduced_angular_matrix_element_cached.cache_info()
     )
-    logger.info("calc_radial_matrix_element_cached: %s", calc_radial_matrix_element_cached.cache_info())
+    logger.info("_calc_radial_matrix_element_cached: %s", _calc_radial_matrix_element_cached.cache_info())
     logger.info("get_rydberg_state_cached: %s", get_rydberg_state_cached.cache_info())
 
 
@@ -246,7 +246,7 @@ def populate_matrix_elements_table(
     element = list_of_states[0].element
     list_of_qns = [(ids, state.n, state.l, state.j) for ids, state in enumerate(list_of_states)]
 
-    # sort the states by l for more efficient caching
+    # sort the states by l, n for more efficient caching
     qns_sorted_by_l = sorted(list_of_qns, key=lambda x: (x[2], x[1], x[0]))
 
     matrix_elements: dict[str, list[tuple[int, int, float]]] = {tkey: [] for tkey in MATRIX_ELEMENTS_OF_INTEREST}
