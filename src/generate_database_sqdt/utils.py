@@ -80,6 +80,9 @@ def calc_radial_matrix_element_cached(
     j1 = l1 - element.s if l1 > max_l else j1
     j2 = l2 - element.s if l2 > max_l else j2
 
+    if k_radial == 0 and (l1, j1) == (l2, j2):
+        return 1 if n1 == n2 else 0
+
     if (n1, l1, j1) > (n2, l2, j2):  # for better use of the cache
         return _calc_radial_matrix_element_cached(species, n2, l2, j2, n1, l1, j1, k_radial)
 
