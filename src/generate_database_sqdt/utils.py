@@ -12,9 +12,15 @@ if TYPE_CHECKING:
     from ryd_numerov.units import OperatorType
 
 
+@lru_cache(maxsize=10)
+def element_from_species(species: str) -> BaseElement:
+    """Get the BaseElement from the species string."""
+    return BaseElement.from_species(species)
+
+
 def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[RydbergState]:
     """Create a list of quantum numbers sorted by their state energies."""
-    element = BaseElement.from_species(species)
+    element = element_from_species(species)
     list_of_states: list[RydbergState] = []
     for n in range(n_min, n_max + 1):
         for l in range(n):
@@ -35,7 +41,7 @@ def calc_matrix_element_one_pair(
     j2: float,
     matrix_elements_of_interest: dict[str, tuple["OperatorType", int, int]],
 ) -> dict[str, float]:
-    element = BaseElement.from_species(species)
+    element = element_from_species(species)
 
     matrix_elements: dict[str, float] = {}
     for tkey, (operator, k_radial, k_angular) in matrix_elements_of_interest.items():
@@ -64,17 +70,38 @@ def calc_reduced_angular_matrix_element_cached(
     return calc_reduced_angular_matrix_element(s1, l1, j1, s2, l2, j2, operator, k_angular)
 
 
-# this cache is basically only used within one call of get_matrix_element
-@lru_cache(maxsize=100)
 def calc_radial_matrix_element_cached(
     species: str, n1: int, l1: int, j1: float, n2: int, l2: int, j2: float, k_radial: int
 ) -> float:
-    if (n1, l1, j1) > (n2, l2, j2):  # for better use of the cache
-        return calc_radial_matrix_element_cached(species, n2, l2, j2, n1, l1, j1, k_radial)
+    # if l is so large, that there is no quantum defect anymore,
+    # then the radial wavefunction is the same for all j, so we set j = l - element.s
+    element = element_from_species(species)
+    max_l = get_max_l_with_quantum_defect(species)
+    j1 = l1 - element.s if l1 > max_l else j1
+    j2 = l2 - element.s if l2 > max_l else j2
 
+    if (n1, l1, j1) > (n2, l2, j2):  # for better use of the cache
+        return _calc_radial_matrix_element_cached(species, n2, l2, j2, n1, l1, j1, k_radial)
+
+    return _calc_radial_matrix_element_cached(species, n1, l1, j1, n2, l2, j2, k_radial)
+
+
+# Cache size should be at least on the order of 4 * (all_n_up_to + 2 * max_delta_n)
+# however, for the first n until n=all_n_up_to we need an even larger cache size
+@lru_cache(maxsize=50_000)
+def _calc_radial_matrix_element_cached(
+    species: str, n1: int, l1: int, j1: float, n2: int, l2: int, j2: float, k_radial: int
+) -> float:
     state1 = get_rydberg_state_cached(species, n1, l1, j1)
     state2 = get_rydberg_state_cached(species, n2, l2, j2)
     return calc_radial_matrix_element(state1, state2, k_radial)
+
+
+@lru_cache(maxsize=10)
+def get_max_l_with_quantum_defect(species: str) -> int:
+    """Get the maximum l with quantum defect for a given species."""
+    element = element_from_species(species)
+    return max([l for (l, *_) in element._quantum_defects], default=0)  # noqa: SLF001
 
 
 # Cache size should be one the order of N_MAX * 4 * 2
