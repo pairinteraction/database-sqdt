@@ -13,27 +13,28 @@ TABLE_NAMES: list[str] = [
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "Sr88_singlet"
-    new_path = Path(f"{name}_v1.2")
-    old_path = Path(f"{name}_v1.1")
+    name = "mqdt/Yb174_mqdt"
+    new_path = Path(f"{name}_v1.0_new")
+    old_path = Path(f"{name}_v1.0")
 
     print(f"Comparing matrix elements tables:\n  New: {new_path}\n  Old: {old_path}")
     for table_name in TABLE_NAMES:
         if not (new_path / f"{table_name}.parquet").exists() or not (old_path / f"{table_name}.parquet").exists():
             print(f"\nSkipping {table_name} as it does not exist in either the new or the old path.")
             continue
-        compare_matrix_elements_table(table_name, new_path, old_path, max_delta_n=3, min_n=16, verbose=False)
+        compare_matrix_elements_table(table_name, new_path, old_path, max_delta_n=3, min_n=16, max_n=80, verbose=True)
 
 
 def compare_matrix_elements_table(
     table_name: str,
     new_path: Path,
     old_path: Path,
-    rtol: float = 1e-3,
-    atol: float = 1e-5,
+    rtol: float = 1e-2,
+    atol: float = 1e-3,
     *,
     max_delta_n: int = 3,
     min_n: int = 1,
+    max_n: int = 999,
     verbose: bool = False,
 ) -> None:
     """Compare the matrix elements table of two versions of the database.
@@ -56,9 +57,17 @@ def compare_matrix_elements_table(
         "old": pd.read_parquet(old_path / f"{table_name}.parquet"),
     }
 
+    for key, table in table_dict.items():
+        print(f"  {key.capitalize()} table shape: {table.shape} with columns: {list(table.columns)}")
+
     multi_index_columns = ["n", "exp_l", "exp_j"]
     if "mqdt" in str(new_path):
         multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
+        # round index columns to avoid floating point issues
+        for col in multi_index_columns:
+            decimals = {"nu": 1}.get(col, 3)
+            states_dict["new"][col] = states_dict["new"][col].round(decimals)
+            states_dict["old"][col] = states_dict["old"][col].round(decimals)
 
     for key, state in states_dict.items():
         # Create a new unique index for each state based on quantum numbers
@@ -71,26 +80,36 @@ def compare_matrix_elements_table(
         for which in ["initial", "final"]:
             table[f"newid_{which}"] = table[f"id_{which}"].map(id_to_newid)
 
-            # Set new colum n and filter by min_n
+        # Set new column n_... and filter by it
+        for which in ["initial", "final"]:
             table[f"n_{which}"] = table[f"id_{which}"].map(id_to_n)
-            if min_n > 1:
-                table = table[table[f"n_{which}"] >= min_n].copy()
+            table_dict[key] = table = table[table[f"n_{which}"] >= min_n].copy()
+            table_dict[key] = table = table[table[f"n_{which}"] <= max_n].copy()
 
-        # Set new colum with delta n = abs(n_final - n_initial) and filter by max_delta_n
+        # Set new column with delta n = abs(n_final - n_initial) and filter by it
         table["delta_n"] = (table["n_final"] - table["n_initial"]).abs()
-        table = table[table["delta_n"] <= max_delta_n].copy()
+        table_dict[key] = table = table[table["delta_n"] <= max_delta_n].copy()
 
         # Index the matrix elements by the newid
-        table = table.set_index(["newid_initial", "newid_final"])
-        table_dict[key] = table.sort_index()
+        table.set_index(["newid_initial", "newid_final"], inplace=True, drop=False)  # noqa: PD002
+        table.sort_index(inplace=True)  # noqa: PD002
+
+    new, old = table_dict["new"], table_dict["old"]
+    print(f"  Values in new table: {new.shape[0]}; Values in old table: {old.shape[0]}")
+    common_index = new.index.intersection(old.index)
+
+    for table in table_dict.values():
+        # only keep rows that are in both tables
+        table.drop(index=common_index.symmetric_difference(table.index), inplace=True, errors="ignore")  # noqa: PD002
+        table.sort_index(inplace=True)  # noqa: PD002
+    print(f"  Common values: {new.shape[0]}")
 
     # Compare val values within tolerance
-    new, old = table_dict["new"], table_dict["old"]
     val_diff = (new["val"] - old["val"]).abs()
     tolerance = atol + rtol * old["val"].abs()
     val_mask = val_diff.gt(tolerance)
 
-    print(f"  Found {val_mask.sum()} val differences outside tolerance:")
+    print(f"  Found {val_mask.sum()}/{val_mask.shape[0]} val differences outside tolerance:")
     if verbose and val_mask.any():
         diff_uids = val_mask.loc[val_mask].index
         for uid in diff_uids:
