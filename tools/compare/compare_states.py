@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 
@@ -6,10 +7,10 @@ import pandas as pd
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
     name = "mqdt/Yb174_mqdt"
-    new_path = Path(f"{name}_v1.0_new")
-    old_path = Path(f"{name}_v1.0")
+    old_path = Path(f"{name}_v1.1")
+    new_path = Path(f"{name}_v1.2")
 
-    compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbose=False)
+    compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbosity="states")
 
 
 def compare_states_table(  # noqa: C901, PLR0912, PLR0915
@@ -19,8 +20,9 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     atol: float = 1e-10,
     *,
     min_n: int = 1,
+    max_n: int = 90,
     compare_id: bool = False,
-    verbose: bool = False,
+    verbosity: Literal["all", "diff", "states"],
 ) -> None:
     """Compare the states table of two versions of the database.
 
@@ -44,6 +46,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     }
     for key, states in states_dict.items():
         states_dict[key] = states[states["n"] >= min_n]
+        states_dict[key] = states[states["n"] <= max_n]
 
     for key, states in states_dict.items():
         print(f"{key.capitalize()} states table:")
@@ -72,12 +75,12 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
         print("States that don't match between tables:")
         if only_in_new:
             print(f"  {len(only_in_new)} states only in new table:")
-            if verbose:
+            if verbosity in ["all", "states"]:
                 for state in sorted(only_in_new):
                     print(", ".join(f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)))
         if only_in_old:
             print(f"  {len(only_in_old)} states only in old table:")
-            if verbose:
+            if verbosity in ["all", "states"]:
                 for state in sorted(only_in_old):
                     print(", ".join(f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)))
 
@@ -103,10 +106,11 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
             print(f"No differences found in column '{col}'.")
             continue
         print(f"Found {differences.sum()} differences in column '{col}':")
-        if verbose:
+        if verbosity in ["all", "diff"] or col in verbosity:
             diff_states = differences.loc[differences].index
             for state in diff_states:
-                print(f"  State (n={state[0]}, l={state[1]}, j={state[2]}):")
+                state_str = ", ".join([f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)])
+                print(f"  State {state_str}:")
                 print(f"    New value: {new.loc[state, col]}")
                 print(f"    Old value: {old.loc[state, col]}")
     print()
@@ -117,13 +121,14 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     energy_mask = energy_diff.gt(tolerance)
 
     print(f"Found {energy_mask.sum()} energy differences outside tolerance:")
-    if verbose and energy_mask.any():
+    if (verbosity in ["all", "diff"] or "energy" in verbosity) and energy_mask.any():
         diff_states = energy_mask.loc[energy_mask].index
         for state in diff_states:
             new_energy = new.loc[state, "energy"]
             old_energy = old.loc[state, "energy"]
             diff_energy = energy_diff[state]
-            print(f"  State (n={state[0]}, l={state[1]}, j={state[2]}):")
+            state_str = ", ".join([f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)])
+            print(f"  State {state_str}:")
             print(f"    New energy: {new_energy:.12f}")
             print(f"    Old energy: {old_energy:.12f}")
             print(f"    Absolute difference: {diff_energy:.2e}")

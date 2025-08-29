@@ -14,15 +14,15 @@ TABLE_NAMES: list[str] = [
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
     name = "mqdt/Yb174_mqdt"
-    new_path = Path(f"{name}_v1.0_new")
-    old_path = Path(f"{name}_v1.0")
+    old_path = Path(f"{name}_v1.1")
+    new_path = Path(f"{name}_v1.2")
 
     print(f"Comparing matrix elements tables:\n  New: {new_path}\n  Old: {old_path}")
     for table_name in TABLE_NAMES:
         if not (new_path / f"{table_name}.parquet").exists() or not (old_path / f"{table_name}.parquet").exists():
             print(f"\nSkipping {table_name} as it does not exist in either the new or the old path.")
             continue
-        compare_matrix_elements_table(table_name, new_path, old_path, max_delta_n=3, min_n=16, max_n=80, verbose=True)
+        compare_matrix_elements_table(table_name, new_path, old_path, max_delta_n=3, min_n=16, max_n=80, verbose=False)
 
 
 def compare_matrix_elements_table(
@@ -30,7 +30,7 @@ def compare_matrix_elements_table(
     new_path: Path,
     old_path: Path,
     rtol: float = 1e-2,
-    atol: float = 1e-3,
+    atol: float = 1e-5,
     *,
     max_delta_n: int = 3,
     min_n: int = 1,
