@@ -12,14 +12,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        species: [misc, H, Li, Na, K, Rb, Cs, Sr88_singlet, Sr88_triplet]
+        species: [misc, H, Li, Na, K, Rb, Cs, Sr88]
         include:
           - extra_args: "--warnings-as-exceptions"
-          - species: Sr88_singlet
-            extra_args: ""  # no warnings as exceptions, due to bad convergence
-            # actually, Sr88_singlet most of the time converges quite well,
-            # only for a few (mostly low-lying) states it has some issues
-          - species: Sr88_triplet
+          - species: Sr88
             extra_args: ""  # no warnings as exceptions, due to bad convergence
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
