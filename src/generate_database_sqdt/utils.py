@@ -117,7 +117,7 @@ def get_max_l_with_quantum_defect(species: str) -> int:
 
 # Cache size should be one the order of N_MAX * 4 * 2
 # (since for each initial state we loop over all l' = l, l+1, l+2 and l+3 final states (and all j final))
-@lru_cache(maxsize=2_000)
+@lru_cache(maxsize=5_000)
 def get_rydberg_state_cached(species: str, n: int, l: int, j_tot: float, s_tot: float) -> RydbergState:
     """Get the cached rydberg state (where the wavefunction was already calculated)."""
     state = RydbergState(species, n=int(n), l=int(l), j_tot=float(j_tot), s_tot=float(s_tot))
