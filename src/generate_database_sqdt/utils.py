@@ -2,6 +2,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
+from numba import njit
 from ryd_numerov import RydbergState
 from ryd_numerov.angular import calc_reduced_angular_matrix_element
 from ryd_numerov.angular.utils import calc_wigner_3j, minus_one_pow
@@ -9,6 +10,7 @@ from ryd_numerov.elements import BaseElement
 from ryd_numerov.radial import calc_radial_matrix_element
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     from ryd_numerov.units import OperatorType
 
 
@@ -118,7 +120,7 @@ def get_max_l_with_quantum_defect(species: str) -> int:
 @lru_cache(maxsize=2_000)
 def get_rydberg_state_cached(species: str, n: int, l: int, j_tot: float, s_tot: float) -> RydbergState:
     """Get the cached rydberg state (where the wavefunction was already calculated)."""
-    state = RydbergState(species, n=n, l=l, j_tot=j_tot, s_tot=s_tot)
+    state = RydbergState(species, n=int(n), l=int(l), j_tot=float(j_tot), s_tot=float(s_tot))
     state.create_wavefunction(sign_convention="n_l_1")
     return state
 
@@ -137,3 +139,58 @@ def calc_wigner_3j_cached(j_1: float, j_2: float, j_3: float, m_1: float, m_2: f
         return minus_one_pow(j_1 + j_2 + j_3) * calc_wigner_3j_cached(j_1, j_2, j_3, -m_1, -m_2, -m_3)
 
     return calc_wigner_3j(j_1, j_2, j_3, m_1, m_2, m_3)
+
+
+def filter_qns(
+    qns_list: "npt.NDArray[np.floating]",
+    qns_ref: tuple[int, int, int, float, float],
+    all_n_up_to: int,
+    max_delta_n: int,
+    k_angular_max: int,
+) -> "npt.NDArray[np.floating]":
+    """Filter the list of quantum numbers based on selection rules."""
+    mask = _filter_qns_njit(
+        n_list=qns_list[:, 1],
+        l_list=qns_list[:, 2],
+        s_list=qns_list[:, 4],
+        n_ref=qns_ref[1],
+        l_ref=qns_ref[2],
+        s_ref=qns_ref[4],
+        all_n_up_to=all_n_up_to,
+        max_delta_n=max_delta_n,
+        k_angular_max=k_angular_max,
+    )
+
+    return qns_list[mask]  # type: ignore [no-any-return]
+
+
+@njit(cache=True)
+def _filter_qns_njit(
+    n_list: "npt.NDArray[np.integer]",
+    l_list: "npt.NDArray[np.integer]",
+    s_list: "npt.NDArray[np.floating]",
+    n_ref: int,
+    l_ref: int,
+    s_ref: float,
+    all_n_up_to: int,
+    max_delta_n: int,
+    k_angular_max: int,
+) -> "npt.NDArray[np.bool]":
+    mask = [True] * len(n_list)
+    for i, (n, l, s) in enumerate(zip(n_list, l_list, s_list)):  # noqa: B905
+        if n > all_n_up_to and n_ref > all_n_up_to and abs(n - n_ref) > max_delta_n:
+            # If delta_n is larger than max_delta_n, we dont calculate the matrix elements anymore,
+            # since these are so small, that they are usually not relevant for further calculations
+            # However, we keep all dipole interactions with small n (we choose all_n_up_to as a cutoff)
+            # since these are relevant for the spontaneous decay rates
+            mask[i] = False
+            continue
+        if abs(l - l_ref) > k_angular_max:
+            # if delta_l is larger than k_angular_max there is no matrix element we calculate
+            mask[i] = False
+            continue
+        if abs(s - s_ref) != 0:
+            # if delta_s is not 0 the matrix element is anyway 0
+            mask[i] = False
+            continue
+    return np.array(mask)
