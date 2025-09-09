@@ -21,13 +21,16 @@ def element_from_species(species: str) -> BaseElement:
 def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[RydbergState]:
     """Create a list of quantum numbers sorted by their state energies."""
     element = element_from_species(species)
+    s_list: list[float] = {1: [1 / 2], 2: [0, 1]}.get(element.number_valence_electrons, [])  # type: ignore [assignment]
     list_of_states: list[RydbergState] = []
-    for n in range(n_min, n_max + 1):
-        for l in range(n):
-            if not element.is_allowed_shell(n, l):
-                continue
-            for j in np.arange(abs(l - element.s), l + element.s + 1):
-                list_of_states.append(RydbergState(species, n, l, float(j)))  # noqa: PERF401
+    for s_tot in s_list:
+        for n in range(n_min, n_max + 1):
+            for l in range(n):
+                if not element.is_allowed_shell(n, l, s_tot):
+                    continue
+                for j_tot in np.arange(abs(l - s_tot), l + s_tot + 1):
+                    state = RydbergState(species, n=n, l=l, j_tot=float(j_tot), s_tot=s_tot)
+                    list_of_states.append(state)
     return sorted(list_of_states, key=lambda x: x.get_energy("a.u."))
 
 
@@ -36,22 +39,23 @@ def calc_matrix_element_one_pair(
     n1: int,
     l1: int,
     j1: float,
+    s1: float,
     n2: int,
     l2: int,
     j2: float,
+    s2: float,
     matrix_elements_of_interest: dict[str, tuple["OperatorType", int, int]],
 ) -> dict[str, float]:
-    element = element_from_species(species)
-
     matrix_elements: dict[str, float] = {}
     for tkey, (operator, k_radial, k_angular) in matrix_elements_of_interest.items():
         angular_matrix_element_au = calc_reduced_angular_matrix_element_cached(
-            element.s, l1, j1, element.s, l2, j2, operator, k_angular
+            s1, l1, j1, s2, l2, j2, operator, k_angular
         )
+
         if angular_matrix_element_au == 0:
             continue
 
-        radial_matrix_element_au = calc_radial_matrix_element_cached(species, n1, l1, j1, n2, l2, j2, k_radial)
+        radial_matrix_element_au = calc_radial_matrix_element_cached(species, n1, l1, j1, s1, n2, l2, j2, s2, k_radial)
         if radial_matrix_element_au == 0:
             continue
 
@@ -71,32 +75,34 @@ def calc_reduced_angular_matrix_element_cached(
 
 
 def calc_radial_matrix_element_cached(
-    species: str, n1: int, l1: int, j1: float, n2: int, l2: int, j2: float, k_radial: int
+    species: str, n1: int, l1: int, j1: float, s1: float, n2: int, l2: int, j2: float, s2: float, k_radial: int
 ) -> float:
     # if l is so large, that there is no quantum defect anymore,
-    # then the radial wavefunction is the same for all j, so we set j = l - element.s
+    # then the radial wavefunction is the same for all j_tot and s_tot, so we set j_tot = l - (s_tot % 1)
     element = element_from_species(species)
     max_l = get_max_l_with_quantum_defect(species)
-    j1 = l1 - element.s if l1 > max_l else j1
-    j2 = l2 - element.s if l2 > max_l else j2
+    j_shift = (element.number_valence_electrons / 2) % 1
+    j1 = l1 - j_shift if l1 > max_l else j1
+    j2 = l2 - j_shift if l2 > max_l else j2
 
     if k_radial == 0 and (l1, j1) == (l2, j2):
         return 1 if n1 == n2 else 0
 
-    if (n1, l1, j1) > (n2, l2, j2):  # for better use of the cache
-        return _calc_radial_matrix_element_cached(species, n2, l2, j2, n1, l1, j1, k_radial)
+    qns1, qns2 = (n1, l1, j1, s1), (n2, l2, j2, s2)
+    if qns1 > qns2:  # for better use of the cache
+        return _calc_radial_matrix_element_cached(species, *qns2, *qns1, k_radial)
 
-    return _calc_radial_matrix_element_cached(species, n1, l1, j1, n2, l2, j2, k_radial)
+    return _calc_radial_matrix_element_cached(species, *qns1, *qns2, k_radial)
 
 
 # Cache size should be at least on the order of 4 * (all_n_up_to + 2 * max_delta_n)
 # however, for the first n until n=all_n_up_to we need an even larger cache size
 @lru_cache(maxsize=50_000)
 def _calc_radial_matrix_element_cached(
-    species: str, n1: int, l1: int, j1: float, n2: int, l2: int, j2: float, k_radial: int
+    species: str, n1: int, l1: int, j1: float, s1: float, n2: int, l2: int, j2: float, s2: float, k_radial: int
 ) -> float:
-    state1 = get_rydberg_state_cached(species, n1, l1, j1)
-    state2 = get_rydberg_state_cached(species, n2, l2, j2)
+    state1 = get_rydberg_state_cached(species, n1, l1, j1, s1)
+    state2 = get_rydberg_state_cached(species, n2, l2, j2, s2)
     return calc_radial_matrix_element(state1, state2, k_radial)
 
 
@@ -110,10 +116,10 @@ def get_max_l_with_quantum_defect(species: str) -> int:
 # Cache size should be one the order of N_MAX * 4 * 2
 # (since for each initial state we loop over all l' = l, l+1, l+2 and l+3 final states (and all j final))
 @lru_cache(maxsize=2_000)
-def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergState:
+def get_rydberg_state_cached(species: str, n: int, l: int, j_tot: float, s_tot: float) -> RydbergState:
     """Get the cached rydberg state (where the wavefunction was already calculated)."""
-    state = RydbergState(species, n, l, j)
-    state.create_wavefunction()
+    state = RydbergState(species, n=n, l=l, j_tot=j_tot, s_tot=s_tot)
+    state.create_wavefunction(sign_convention="n_l_1")
     return state
 
 

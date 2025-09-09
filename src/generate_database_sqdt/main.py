@@ -193,13 +193,13 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
     for ids, state in enumerate(list_of_states):
         std_j_ryd: float
         exp_j_ryd: float
-        if state.element.s == 1 / 2:
-            exp_j_ryd = state.j
+        if state.element.number_valence_electrons == 1:
+            exp_j_ryd = state.j_tot
             std_j_ryd = 0
-        else:  # state.s in [0, 1]
+        else:  # number_valence_electrons == 2
             s1 = s2 = 0.5
             coefficients: dict[float, float] = {
-                float(j1): clebsch_gordan_6j(s1, s2, int(state.s), state.l, float(j1), int(state.j))
+                float(j1): clebsch_gordan_6j(s1, s2, int(state.s_tot), state.l, float(j1), int(state.j_tot))
                 for j1 in np.arange(abs(state.l - s1), state.l + s1 + 1)
             }
             exp_j_ryd = sum(j1 * coeff**2 for j1, coeff in coefficients.items())
@@ -215,13 +215,13 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
                 (-1) ** state.l,  # parity = (-1)^l
                 state.n,  # n: quantum number
                 n_star,  # nu = NStar for sqdt
-                state.j,  # f: quantum number, neglect hyperfine splitting -> f = j
+                state.j_tot,  # f: quantum number, neglect hyperfine splitting -> f = j_tot
                 n_star,  # exp_nui = nu for sqdt
                 state.l,  # exp_l = l
-                state.j,  # exp_j = j
-                state.s,  # exp_s = s
+                state.j_tot,  # exp_j = j_tot
+                state.s_tot,  # exp_s = s_tot
                 state.l,  # exp_l_ryd = l for sqdt
-                exp_j_ryd,  # exp_j_ryd = j for sqdt only one valence electron
+                exp_j_ryd,  # exp_j_ryd = j_tot for sqdt only one valence electron
                 0,  # std_nui = 0
                 0,  # std_l = 0
                 0,  # std_j = 0
@@ -244,15 +244,15 @@ def populate_matrix_elements_table(
     k_angular_max = 3
 
     element = list_of_states[0].element
-    list_of_qns = [(ids, state.n, state.l, state.j) for ids, state in enumerate(list_of_states)]
+    list_of_qns = [(ids, state.n, state.l, state.j_tot, state.s_tot) for ids, state in enumerate(list_of_states)]
 
-    # sort the states by l, n for more efficient caching
-    qns_sorted_by_l = sorted(list_of_qns, key=lambda x: (x[2], x[1], x[0]))
+    # sort the states by s_tot, l, n for more efficient caching
+    qns_sorted_by_l = sorted(list_of_qns, key=lambda x: (x[4], x[2], x[1], x[0]))
 
     matrix_elements: dict[str, list[tuple[int, int, float]]] = {tkey: [] for tkey in MATRIX_ELEMENTS_OF_INTEREST}
-    for i, (id1, n1, l1, j1) in enumerate(qns_sorted_by_l):
+    for i, (id1, n1, l1, j1, s1) in enumerate(qns_sorted_by_l):
         qns_filtered = filter(lambda x: x[2] - l1 <= k_angular_max, qns_sorted_by_l[i:])
-        for id2, n2, l2, j2 in qns_filtered:
+        for id2, n2, l2, j2, s2 in qns_filtered:
             if all(n > all_n_up_to for n in [n1, n2]) and abs(n1 - n2) > max_delta_n:
                 # If delta_n is larger than max_delta_n, we dont calculate the matrix elements anymore,
                 # since these are so small, that they are usually not relevant for further calculations
@@ -261,14 +261,14 @@ def populate_matrix_elements_table(
                 continue
 
             id_tuple = (id1, id2) if id1 <= id2 else (id2, id1)
-            qns = (n1, l1, j1, n2, l2, j2) if id1 <= id2 else (n2, l2, j2, n1, l1, j1)
+            qns = (n1, l1, j1, s1, n2, l2, j2, s2) if id1 <= id2 else (n2, l2, j2, s2, n1, l1, j1, s1)
             me_one_pair = calc_matrix_element_one_pair(element.species, *qns, MATRIX_ELEMENTS_OF_INTEREST)
             for tkey, me in me_one_pair.items():
                 matrix_elements[tkey].append((*id_tuple, me))
 
             if id1 != id2:
                 id_tuple = (id_tuple[1], id_tuple[0])
-                qns = qns[3:] + qns[:3]
+                qns = qns[4:] + qns[:4]
                 me_one_pair = calc_matrix_element_one_pair(element.species, *qns, MATRIX_ELEMENTS_OF_INTEREST)
                 for tkey, me in me_one_pair.items():
                     matrix_elements[tkey].append((*id_tuple, me))

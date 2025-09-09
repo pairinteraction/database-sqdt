@@ -12,13 +12,13 @@ license = "MIT"
 license-files = ["LICENSE.txt"]
 requires-python = ">=3.10"
 dependencies = [
-  "ryd-numerov >= 0.7",
+  "ryd-numerov == 0.8.1",
   "pandas[pyarrow] >= 2.2.3",
   "pairinteraction >= 2.1",
 ]
 
 [tool.uv.sources]
-ryd-numerov = { git = "https://github.com/pairinteraction/ryd-numerov", rev = "ce4ebc4b41e2b762451ba74cbb9ed8d6bbaff2d6" }
+ryd-numerov = { git = "https://github.com/pairinteraction/ryd-numerov", rev = "d11fcf948355d656b37ed65490d719b4ececdb3b" }
 
 [project.optional-dependencies]
 mypy = [
