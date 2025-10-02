@@ -25,6 +25,13 @@ mypy = [
   "mypy >= 1.14",
   "pandas-stubs >= 2.2.3"
 ]
+jupyter = [
+  "pip",
+  "ipykernel",
+]
+
+[dependency-groups]
+dev = ["generate_database_sqdt[jupyter,mypy]"]
 
 [project.scripts]
 generate_database = "generate_database_sqdt:main.main"
