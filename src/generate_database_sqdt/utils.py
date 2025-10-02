@@ -112,6 +112,8 @@ def _calc_radial_matrix_element_cached(
 def get_max_l_with_quantum_defect(species: str) -> int:
     """Get the maximum l with quantum defect for a given species."""
     element = element_from_species(species)
+    if element._quantum_defects is None:  # noqa: SLF001
+        return -1
     return max([l for (l, *_) in element._quantum_defects], default=0)  # noqa: SLF001
 
 

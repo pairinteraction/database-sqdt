@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import ryd_numerov
 from ryd_numerov.angular.utils import clebsch_gordan_6j
+from ryd_numerov.elements import BaseElement
 from ryd_numerov.rydberg import RydbergState
 
 from generate_database_sqdt import __version__, database_sql_file
@@ -99,9 +100,12 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    species_folder = Path(args.directory) / f"{args.species}_v{__version__}"
     if args.species == "misc":
         species_folder = Path(args.directory) / f"misc_v{__version__}"
+    else:
+        element = BaseElement.from_species(args.species)
+        suffix = "_sqdt" if element.number_valence_electrons == 2 else ""  # noqa: PLR2004 # 2 == alkaline earth atom
+        species_folder = Path(args.directory) / f"{args.species}{suffix}_v{__version__}"
 
     if species_folder.exists():
         if args.overwrite:
