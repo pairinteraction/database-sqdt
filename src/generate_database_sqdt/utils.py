@@ -2,14 +2,21 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
-from ryd_numerov import RydbergState
-from ryd_numerov.angular import calc_reduced_angular_matrix_element
-from ryd_numerov.angular.utils import calc_wigner_3j, minus_one_pow
+from ryd_numerov import RydbergStateAlkali
+from ryd_numerov.angular import AngularKetLS
 from ryd_numerov.elements import BaseElement
-from ryd_numerov.radial import calc_radial_matrix_element
 
 if TYPE_CHECKING:
-    from ryd_numerov.units import OperatorType
+    from ryd_numerov.angular.angular_matrix_element import AngularOperatorType
+    from ryd_numerov.units import MatrixElementType
+
+OPERATOR_TO_KS = {  # operator: (k_radial, k_angular)
+    "MAGNETIC_DIPOLE": (0, 1),
+    "ELECTRIC_DIPOLE": (1, 1),
+    "ELECTRIC_QUADRUPOLE": (2, 2),
+    "ELECTRIC_OCTUPOLE": (3, 3),
+    "ELECTRIC_QUADRUPOLE_ZERO": (2, 0),
+}
 
 
 @lru_cache(maxsize=10)
@@ -18,16 +25,18 @@ def element_from_species(species: str) -> BaseElement:
     return BaseElement.from_species(species)
 
 
-def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[RydbergState]:
+def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[RydbergStateAlkali]:
     """Create a list of quantum numbers sorted by their state energies."""
     element = element_from_species(species)
-    list_of_states: list[RydbergState] = []
+    list_of_states: list[RydbergStateAlkali] = []
     for n in range(n_min, n_max + 1):
         for l in range(n):
-            if not element.is_allowed_shell(n, l):
+            if not element.is_allowed_shell(n, l, 1 / 2):
                 continue
-            for j in np.arange(abs(l - element.s), l + element.s + 1):
-                list_of_states.append(RydbergState(species, n, l, float(j)))  # noqa: PERF401
+            for j in np.arange(abs(l - 1 / 2), l + 1 / 2 + 1):
+                state = RydbergStateAlkali(species, n, l, float(j))
+                state.create_element(use_nist_data=True)
+                list_of_states.append(state)
     return sorted(list_of_states, key=lambda x: x.get_energy("a.u."))
 
 
@@ -39,25 +48,37 @@ def calc_matrix_element_one_pair(
     n2: int,
     l2: int,
     j2: float,
-    matrix_elements_of_interest: dict[str, tuple["OperatorType", int, int]],
+    matrix_elements_of_interest: dict[str, "MatrixElementType"],
 ) -> dict[str, float]:
-    element = element_from_species(species)
-
     matrix_elements: dict[str, float] = {}
-    for tkey, (operator, k_radial, k_angular) in matrix_elements_of_interest.items():
-        angular_matrix_element_au = calc_reduced_angular_matrix_element_cached(
-            element.s, l1, j1, element.s, l2, j2, operator, k_angular
-        )
-        if angular_matrix_element_au == 0:
+    for tkey, operator in matrix_elements_of_interest.items():
+        k_radial, k_angular = OPERATOR_TO_KS[operator]
+
+        if operator == "MAGNETIC_DIPOLE":
+            # Magnetic dipole operator: mu = - mu_B (g_l <l_tot> + g_s <s_tot>)
+            g_s = 2.0023192
+            value_s_tot = calc_reduced_angular_matrix_element_cached(l1, j1, l2, j2, "s_tot", k_angular, species)
+            g_l = 1
+            value_l_tot = calc_reduced_angular_matrix_element_cached(l1, j1, l2, j2, "l_tot", k_angular, species)
+            angular_matrix_element = g_s * value_s_tot + g_l * value_l_tot
+            prefactor = -0.5  # - mu_B in atomic units
+
+        elif operator in ["ELECTRIC_DIPOLE", "ELECTRIC_QUADRUPOLE", "ELECTRIC_OCTUPOLE", "ELECTRIC_QUADRUPOLE_ZERO"]:
+            angular_matrix_element = calc_reduced_angular_matrix_element_cached(
+                l1, j1, l2, j2, "SPHERICAL", k_angular, species
+            )
+            prefactor = np.sqrt(4 * np.pi / (2 * k_angular + 1))  # e in atomic units is 1
+        else:
+            raise NotImplementedError(f"Operator {operator} not implemented.")
+
+        if angular_matrix_element == 0:
             continue
 
         radial_matrix_element_au = calc_radial_matrix_element_cached(species, n1, l1, j1, n2, l2, j2, k_radial)
         if radial_matrix_element_au == 0:
             continue
 
-        # - mu_B in atomic units = -1/2; (e in atomic units = 1)
-        prefactor = -1 / 2 if operator == "MAGNETIC" else 1
-        matrix_elements[tkey] = prefactor * radial_matrix_element_au * angular_matrix_element_au
+        matrix_elements[tkey] = prefactor * radial_matrix_element_au * angular_matrix_element
 
     return matrix_elements
 
@@ -65,20 +86,27 @@ def calc_matrix_element_one_pair(
 # since we sort the states by l, before calculating the matrix elements a rather low number of cache size is sufficient
 @lru_cache(maxsize=2_000)
 def calc_reduced_angular_matrix_element_cached(
-    s1: int, l1: int, j1: float, s2: int, l2: int, j2: float, operator: "OperatorType", k_angular: int
+    l1: int,
+    j1: float,
+    l2: int,
+    j2: float,
+    operator: "AngularOperatorType",
+    k_angular: int,
+    species: str,
 ) -> float:
-    return calc_reduced_angular_matrix_element(s1, l1, j1, s2, l2, j2, operator, k_angular)
+    ket1 = AngularKetLS(l_r=l1, j_tot=j1, species=species)
+    ket2 = AngularKetLS(l_r=l2, j_tot=j2, species=species)
+    return ket1.calc_reduced_matrix_element(ket2, operator, k_angular)
 
 
 def calc_radial_matrix_element_cached(
     species: str, n1: int, l1: int, j1: float, n2: int, l2: int, j2: float, k_radial: int
 ) -> float:
     # if l is so large, that there is no quantum defect anymore,
-    # then the radial wavefunction is the same for all j, so we set j = l - element.s
-    element = element_from_species(species)
+    # then the radial wavefunction is the same for all j, so we set j = l - 1/2
     max_l = get_max_l_with_quantum_defect(species)
-    j1 = l1 - element.s if l1 > max_l else j1
-    j2 = l2 - element.s if l2 > max_l else j2
+    j1 = l1 - 1 / 2 if l1 > max_l else j1
+    j2 = l2 - 1 / 2 if l2 > max_l else j2
 
     if k_radial == 0 and (l1, j1) == (l2, j2):
         return 1 if n1 == n2 else 0
@@ -97,7 +125,7 @@ def _calc_radial_matrix_element_cached(
 ) -> float:
     state1 = get_rydberg_state_cached(species, n1, l1, j1)
     state2 = get_rydberg_state_cached(species, n2, l2, j2)
-    return calc_radial_matrix_element(state1, state2, k_radial)
+    return state1.radial.calc_matrix_element(state2.radial, k_radial, unit="a.u.")
 
 
 @lru_cache(maxsize=10)
@@ -110,24 +138,9 @@ def get_max_l_with_quantum_defect(species: str) -> int:
 # Cache size should be one the order of N_MAX * 4 * 2
 # (since for each initial state we loop over all l' = l, l+1, l+2 and l+3 final states (and all j final))
 @lru_cache(maxsize=2_000)
-def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergState:
+def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergStateAlkali:
     """Get the cached rydberg state (where the wavefunction was already calculated)."""
-    state = RydbergState(species, n, l, j)
-    state.create_wavefunction()
+    state = RydbergStateAlkali(species, n, l, j)
+    state.create_element(use_nist_data=True)
+    state.radial.create_wavefunction()
     return state
-
-
-@lru_cache(maxsize=10_000_000)
-def calc_wigner_3j_cached(j_1: float, j_2: float, j_3: float, m_1: float, m_2: float, m_3: float) -> float:
-    if not j_1 <= j_2 <= j_3:  # better use of caching
-        args_nd = np.array([j_1, j_2, j_3, m_1, m_2, m_3])
-        inds = np.argsort(args_nd[:3])
-        wigner = calc_wigner_3j_cached(*args_nd[:3][inds], *args_nd[3:][inds])
-        if (inds[1] - inds[0]) in [1, -2]:
-            return wigner
-        return minus_one_pow(j_1 + j_2 + j_3) * wigner
-
-    if m_3 < 0 or (m_3 == 0 and m_2 < 0):  # better use of caching
-        return minus_one_pow(j_1 + j_2 + j_3) * calc_wigner_3j_cached(j_1, j_2, j_3, -m_1, -m_2, -m_3)
-
-    return calc_wigner_3j(j_1, j_2, j_3, m_1, m_2, m_3)
