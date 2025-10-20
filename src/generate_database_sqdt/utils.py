@@ -34,7 +34,9 @@ def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[Rydb
             if not element.is_allowed_shell(n, l, 1 / 2):
                 continue
             for j in np.arange(abs(l - 1 / 2), l + 1 / 2 + 1):
-                list_of_states.append(RydbergStateAlkali(species, n, l, float(j)))  # noqa: PERF401
+                state = RydbergStateAlkali(species, n, l, float(j))
+                state.create_element(use_nist_data=True)
+                list_of_states.append(state)
     return sorted(list_of_states, key=lambda x: x.get_energy("a.u."))
 
 
@@ -145,5 +147,6 @@ def get_max_l_with_quantum_defect(species: str) -> int:
 def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergStateAlkali:
     """Get the cached rydberg state (where the wavefunction was already calculated)."""
     state = RydbergStateAlkali(species, n, l, j)
+    state.create_element(use_nist_data=True)
     state.radial.create_wavefunction()
     return state
