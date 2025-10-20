@@ -7,24 +7,20 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import numpy as np
 import pandas as pd
 import ryd_numerov
-from ryd_numerov.angular.utils import clebsch_gordan_6j
-from ryd_numerov.rydberg import RydbergState
+from ryd_numerov import RydbergStateAlkali
 
 from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.generate_misc import create_tables_for_misc
 from generate_database_sqdt.utils import (
-    _calc_radial_matrix_element_cached,
     calc_matrix_element_one_pair,
-    calc_reduced_angular_matrix_element_cached,
     get_rydberg_state_cached,
     get_sorted_list_of_states,
 )
 
 if TYPE_CHECKING:
-    from ryd_numerov.units import OperatorType
+    from ryd_numerov.units import MatrixElementType
 
 
 class WarningsAsExceptionsHandler(logging.Handler):
@@ -42,13 +38,12 @@ class WarningsAsExceptionsHandler(logging.Handler):
 logger = logging.getLogger(__name__)
 
 
-MATRIX_ELEMENTS_OF_INTEREST: dict[str, tuple["OperatorType", int, int]] = {
-    # key: (operator, k_radial, k_angular)  # noqa: ERA001
-    "matrix_elements_d": ("ELECTRIC", 1, 1),  # dipole
-    "matrix_elements_q": ("ELECTRIC", 2, 2),  # quadrupole
-    "matrix_elements_o": ("ELECTRIC", 3, 3),  # octopole
-    "matrix_elements_q0": ("ELECTRIC", 2, 0),  # diamagnetic
-    "matrix_elements_mu": ("MAGNETIC", 0, 1),  # magnetic
+MATRIX_ELEMENTS_OF_INTEREST: dict[str, "MatrixElementType"] = {  # key: (operator, k_radial, k_angular)
+    "matrix_elements_d": "ELECTRIC_DIPOLE",
+    "matrix_elements_q": "ELECTRIC_QUADRUPOLE",
+    "matrix_elements_o": "ELECTRIC_OCTUPOLE",
+    "matrix_elements_q0": "ELECTRIC_QUADRUPOLE_ZERO",
+    "matrix_elements_mu": "MAGNETIC_DIPOLE",
 }
 
 
@@ -180,33 +175,17 @@ def create_tables_for_one_species(
                 with Path(f"{species}.log").open("a") as buf:
                     table.info(buf=buf)
 
-    logger.info(
-        "calc_reduced_angular_matrix_element_cached: %s", calc_reduced_angular_matrix_element_cached.cache_info()
-    )
-    logger.info("_calc_radial_matrix_element_cached: %s", _calc_radial_matrix_element_cached.cache_info())
     logger.info("get_rydberg_state_cached: %s", get_rydberg_state_cached.cache_info())
 
 
-def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Connection") -> None:
+def populate_states_table(list_of_states: list[RydbergStateAlkali], conn: "sqlite3.Connection") -> None:
     """Populate the states table with data for a given species."""
     states_data = []
     for ids, state in enumerate(list_of_states):
-        std_j_ryd: float
-        exp_j_ryd: float
-        if state.element.s == 1 / 2:
-            exp_j_ryd = state.j
-            std_j_ryd = 0
-        else:  # state.s in [0, 1]
-            s1 = s2 = 0.5
-            coefficients: dict[float, float] = {
-                float(j1): clebsch_gordan_6j(s1, s2, int(state.s), state.l, float(j1), int(state.j))
-                for j1 in np.arange(abs(state.l - s1), state.l + s1 + 1)
-            }
-            exp_j_ryd = sum(j1 * coeff**2 for j1, coeff in coefficients.items())
-            std_j_ryd_squared = sum((j1 - exp_j_ryd) ** 2 * coeff**2 for j1, coeff in coefficients.items())
-            std_j_ryd = 0 if std_j_ryd_squared < 1e-12 else np.sqrt(std_j_ryd_squared)  # noqa: PLR2004
+        exp_j_ryd = state.angular.to_state().calc_exp_qn("j_r")
+        std_j_ryd = state.angular.to_state().calc_std_qn("j_r")
 
-        n_star = state.get_n_star()
+        n_star = state.get_nu()
 
         states_data.append(
             (
@@ -219,7 +198,7 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
                 n_star,  # exp_nui = nu for sqdt
                 state.l,  # exp_l = l
                 state.j,  # exp_j = j
-                state.s,  # exp_s = s
+                state.angular.s_tot,  # exp_s = s
                 state.l,  # exp_l_ryd = l for sqdt
                 exp_j_ryd,  # exp_j_ryd = j for sqdt only one valence electron
                 0,  # std_nui = 0
@@ -239,7 +218,7 @@ def populate_states_table(list_of_states: list[RydbergState], conn: "sqlite3.Con
 
 
 def populate_matrix_elements_table(
-    list_of_states: list[RydbergState], conn: "sqlite3.Connection", max_delta_n: int, all_n_up_to: int
+    list_of_states: list[RydbergStateAlkali], conn: "sqlite3.Connection", max_delta_n: int, all_n_up_to: int
 ) -> None:
     k_angular_max = 3
 
