@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 from ryd_numerov import RydbergStateAlkali
 from ryd_numerov.angular import AngularKetLS
-from ryd_numerov.angular.utils import calc_wigner_3j, minus_one_pow
 from ryd_numerov.elements import BaseElement
 
 if TYPE_CHECKING:
@@ -56,9 +55,13 @@ def calc_matrix_element_one_pair(
         if operator == "MAGNETIC_DIPOLE":
             # Magnetic dipole operator: mu = - mu_B (g_l <l_tot> + g_s <s_tot>)
             g_s = 2.0023192
-            value_s_tot = calc_reduced_angular_matrix_element_cached(1 / 2, l1, j1, 1 / 2, l2, j2, "s_tot", k_angular, species=species)
+            value_s_tot = calc_reduced_angular_matrix_element_cached(
+                1 / 2, l1, j1, 1 / 2, l2, j2, "s_tot", k_angular, species=species
+            )
             g_l = 1
-            value_l_tot = calc_reduced_angular_matrix_element_cached(1 / 2, l1, j1, 1 / 2, l2, j2, "l_tot", k_angular, species=species)
+            value_l_tot = calc_reduced_angular_matrix_element_cached(
+                1 / 2, l1, j1, 1 / 2, l2, j2, "l_tot", k_angular, species=species
+            )
             angular_matrix_element = g_s * value_s_tot + g_l * value_l_tot
             prefactor = -0.5  # - mu_B in atomic units
 
@@ -85,7 +88,15 @@ def calc_matrix_element_one_pair(
 # since we sort the states by l, before calculating the matrix elements a rather low number of cache size is sufficient
 @lru_cache(maxsize=2_000)
 def calc_reduced_angular_matrix_element_cached(
-    s1: int, l1: int, j1: float, s2: int, l2: int, j2: float, operator: "AngularOperatorType", k_angular: int, species: str
+    s1: int,
+    l1: int,
+    j1: float,
+    s2: int,
+    l2: int,
+    j2: float,
+    operator: "AngularOperatorType",
+    k_angular: int,
+    species: str,
 ) -> float:
     state1 = AngularKetLS(s_tot=s1, l_r=l1, j_tot=j1, species=species)
     state2 = AngularKetLS(s_tot=s2, l_r=l2, j_tot=j2, species=species)
@@ -136,19 +147,3 @@ def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergS
     state = RydbergStateAlkali(species, n, l, j)
     state.radial.create_wavefunction()
     return state
-
-
-@lru_cache(maxsize=10_000_000)
-def calc_wigner_3j_cached(j_1: float, j_2: float, j_3: float, m_1: float, m_2: float, m_3: float) -> float:
-    if not j_1 <= j_2 <= j_3:  # better use of caching
-        args_nd = np.array([j_1, j_2, j_3, m_1, m_2, m_3])
-        inds = np.argsort(args_nd[:3])
-        wigner = calc_wigner_3j_cached(*args_nd[:3][inds], *args_nd[3:][inds])
-        if (inds[1] - inds[0]) in [1, -2]:
-            return wigner
-        return minus_one_pow(j_1 + j_2 + j_3) * wigner
-
-    if m_3 < 0 or (m_3 == 0 and m_2 < 0):  # better use of caching
-        return minus_one_pow(j_1 + j_2 + j_3) * calc_wigner_3j_cached(j_1, j_2, j_3, -m_1, -m_2, -m_3)
-
-    return calc_wigner_3j(j_1, j_2, j_3, m_1, m_2, m_3)
