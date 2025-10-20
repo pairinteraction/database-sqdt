@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import ryd_numerov
+from ryd_numerov.angular.utils import calc_wigner_3j
 
 from generate_database_sqdt import __version__, database_sql_file
-from generate_database_sqdt.utils import calc_wigner_3j_cached
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ def create_tables_for_misc(f_max: float, kappa_max: int) -> None:
         with Path("wigner.log").open("a") as buf:
             table.info(buf=buf)
 
-    logger.info("calc_wigner_3j_cached: %s", calc_wigner_3j_cached.cache_info())
+    logger.info("calc_wigner_3j: %s", calc_wigner_3j.cache_info())
 
 
 def populate_wigner_table(f_max: float, kappa_max: int, conn: "sqlite3.Connection") -> None:
@@ -48,7 +48,7 @@ def populate_wigner_table(f_max: float, kappa_max: int, conn: "sqlite3.Connectio
                         m_final = m_initial + q
                         if not -f_final <= m_final <= f_final:
                             continue
-                        wigner = calc_wigner_3j_cached(f_final, kappa, f_initial, -m_final, q, m_initial)
+                        wigner = calc_wigner_3j(f_final, kappa, f_initial, -m_final, q, m_initial)
                         wigner *= (-1) ** (f_final - m_final)
                         if wigner == 0:
                             continue
