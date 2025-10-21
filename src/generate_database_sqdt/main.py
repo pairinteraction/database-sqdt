@@ -47,6 +47,9 @@ MATRIX_ELEMENTS_OF_INTEREST: dict[str, "MatrixElementType"] = {  # key: (operato
 }
 
 
+USE_HYPERFINE = True
+
+
 def main() -> None:
     """Entry point for the generate_database script."""
     parser = argparse.ArgumentParser(
@@ -155,7 +158,7 @@ def create_tables_for_one_species(
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
         conn.executescript(database_sql_file.read_text(encoding="utf-8"))
-        list_of_states = get_sorted_list_of_states(species, n_min, n_max)
+        list_of_states = get_sorted_list_of_states(species, n_min, n_max, use_hyperfine=USE_HYPERFINE)
         populate_states_table(list_of_states, conn)
         populate_matrix_elements_table(list_of_states, conn, max_delta_n, all_n_up_to)
     logger.info("Size of %s: %.6f megabytes", db_file, db_file.stat().st_size * 1e-6)
@@ -166,7 +169,7 @@ def create_tables_for_one_species(
             table = pd.read_sql_query(f"SELECT * FROM {tkey}", conn)
             if tkey == "states":
                 table = table.astype({"is_j_total_momentum": bool, "is_calculated_with_mqdt": bool})
-                table["is_j_total_momentum"] = True
+                table["is_j_total_momentum"] = not USE_HYPERFINE
                 table["is_calculated_with_mqdt"] = False
             table.to_parquet(parquet_file, index=False, compression="zstd")
             logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
