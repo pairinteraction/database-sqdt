@@ -96,7 +96,7 @@ def calc_reduced_angular_matrix_element_cached(
 ) -> float:
     ket1 = AngularKetLS(l_r=l1, j_tot=j1, species=species)
     ket2 = AngularKetLS(l_r=l2, j_tot=j2, species=species)
-    return ket1.calc_reduced_matrix_element(ket2, operator, k_angular)
+    return ket2.calc_reduced_matrix_element(ket1, operator, k_angular)
 
 
 def calc_radial_matrix_element_cached(
@@ -142,5 +142,5 @@ def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergS
     """Get the cached rydberg state (where the wavefunction was already calculated)."""
     state = RydbergStateAlkali(species, n, l, j)
     state.create_element(use_nist_data=True)
-    state.radial.create_wavefunction()
+    state.radial.create_wavefunction(sign_convention="n_l_1")
     return state
