@@ -57,21 +57,17 @@ def calc_matrix_element_one_pair(
         if operator == "MAGNETIC_DIPOLE":
             # Magnetic dipole operator: mu = - mu_B (g_l <l_tot> + g_s <s_tot>)
             g_s = 2.0023192
-            value_s_tot = calc_reduced_angular_matrix_element_cached(
-                1 / 2, l1, j1, 1 / 2, l2, j2, "s_tot", k_angular, species=species
-            )
+            value_s_tot = calc_reduced_angular_matrix_element_cached(l1, j1, l2, j2, "s_tot", k_angular, species)
             g_l = 1
-            value_l_tot = calc_reduced_angular_matrix_element_cached(
-                1 / 2, l1, j1, 1 / 2, l2, j2, "l_tot", k_angular, species=species
-            )
+            value_l_tot = calc_reduced_angular_matrix_element_cached(l1, j1, l2, j2, "l_tot", k_angular, species)
             angular_matrix_element = g_s * value_s_tot + g_l * value_l_tot
             prefactor = -0.5  # - mu_B in atomic units
 
         elif operator in ["ELECTRIC_DIPOLE", "ELECTRIC_QUADRUPOLE", "ELECTRIC_OCTUPOLE", "ELECTRIC_QUADRUPOLE_ZERO"]:
             angular_matrix_element = calc_reduced_angular_matrix_element_cached(
-                1 / 2, l1, j1, 1 / 2, l2, j2, "SPHERICAL", k_angular, species=species
+                l1, j1, l2, j2, "SPHERICAL", k_angular, species
             )
-            prefactor = 1  # e in atomic units
+            prefactor = np.sqrt(4 * np.pi / (2 * k_angular + 1))  # e in atomic units is 1
         else:
             raise NotImplementedError(f"Operator {operator} not implemented.")
 
@@ -90,19 +86,17 @@ def calc_matrix_element_one_pair(
 # since we sort the states by l, before calculating the matrix elements a rather low number of cache size is sufficient
 @lru_cache(maxsize=2_000)
 def calc_reduced_angular_matrix_element_cached(
-    s1: int,
     l1: int,
     j1: float,
-    s2: int,
     l2: int,
     j2: float,
     operator: "AngularOperatorType",
     k_angular: int,
     species: str,
 ) -> float:
-    state1 = AngularKetLS(s_tot=s1, l_r=l1, j_tot=j1, species=species)
-    state2 = AngularKetLS(s_tot=s2, l_r=l2, j_tot=j2, species=species)
-    return state1.calc_reduced_matrix_element(state2, operator, k_angular)
+    ket1 = AngularKetLS(l_r=l1, j_tot=j1, species=species)
+    ket2 = AngularKetLS(l_r=l2, j_tot=j2, species=species)
+    return ket1.calc_reduced_matrix_element(ket2, operator, k_angular)
 
 
 def calc_radial_matrix_element_cached(
