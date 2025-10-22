@@ -26,6 +26,8 @@ jobs:
     timeout-minutes: 300
     steps:
     - uses: actions/checkout@v5
+      with:
+        submodules: 'true'
     - name: Install uv
       uses: astral-sh/setup-uv@v7
     - name: Run generate_database.py
