@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import logging
 import os
@@ -9,12 +11,13 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import ryd_numerov
-from ryd_numerov import RydbergStateAlkali
+from ryd_numerov import RydbergStateAlkaliHyperfine
 
 from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.generate_misc import create_tables_for_misc
 from generate_database_sqdt.utils import (
     calc_matrix_element_one_pair,
+    element_from_species,
     get_rydberg_state_cached,
     get_sorted_list_of_states,
 )
@@ -38,16 +41,13 @@ class WarningsAsExceptionsHandler(logging.Handler):
 logger = logging.getLogger(__name__)
 
 
-MATRIX_ELEMENTS_OF_INTEREST: dict[str, "MatrixElementType"] = {  # key: (operator, k_radial, k_angular)
+MATRIX_ELEMENTS_OF_INTEREST: dict[str, MatrixElementType] = {  # key: (operator, k_radial, k_angular)
     "matrix_elements_d": "ELECTRIC_DIPOLE",
     "matrix_elements_q": "ELECTRIC_QUADRUPOLE",
     "matrix_elements_o": "ELECTRIC_OCTUPOLE",
     "matrix_elements_q0": "ELECTRIC_QUADRUPOLE_ZERO",
     "matrix_elements_mu": "MAGNETIC_DIPOLE",
 }
-
-
-USE_HYPERFINE = True
 
 
 def main() -> None:
@@ -158,18 +158,19 @@ def create_tables_for_one_species(
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
         conn.executescript(database_sql_file.read_text(encoding="utf-8"))
-        list_of_states = get_sorted_list_of_states(species, n_min, n_max, use_hyperfine=USE_HYPERFINE)
+        list_of_states = get_sorted_list_of_states(species, n_min, n_max)
         populate_states_table(list_of_states, conn)
         populate_matrix_elements_table(list_of_states, conn, max_delta_n, all_n_up_to)
     logger.info("Size of %s: %.6f megabytes", db_file, db_file.stat().st_size * 1e-6)
 
+    element = element_from_species(species)
     with sqlite3.connect(db_file) as conn:
         for tkey in ["states", *MATRIX_ELEMENTS_OF_INTEREST.keys()]:
             parquet_file = Path(f"{tkey}.parquet")
             table = pd.read_sql_query(f"SELECT * FROM {tkey}", conn)
             if tkey == "states":
                 table = table.astype({"is_j_total_momentum": bool, "is_calculated_with_mqdt": bool})
-                table["is_j_total_momentum"] = not USE_HYPERFINE
+                table["is_j_total_momentum"] = element.i_c == 0
                 table["is_calculated_with_mqdt"] = False
             table.to_parquet(parquet_file, index=False, compression="zstd")
             logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
@@ -181,7 +182,7 @@ def create_tables_for_one_species(
     logger.info("get_rydberg_state_cached: %s", get_rydberg_state_cached.cache_info())
 
 
-def populate_states_table(list_of_states: list[RydbergStateAlkali], conn: "sqlite3.Connection") -> None:
+def populate_states_table(list_of_states: list[RydbergStateAlkaliHyperfine], conn: sqlite3.Connection) -> None:
     """Populate the states table with data for a given species."""
     states_data = []
     for ids, state in enumerate(list_of_states):
@@ -219,7 +220,7 @@ def populate_states_table(list_of_states: list[RydbergStateAlkali], conn: "sqlit
 
 
 def populate_matrix_elements_table(
-    list_of_states: list[RydbergStateAlkali], conn: "sqlite3.Connection", max_delta_n: int, all_n_up_to: int
+    list_of_states: list[RydbergStateAlkaliHyperfine], conn: sqlite3.Connection, max_delta_n: int, all_n_up_to: int
 ) -> None:
     k_angular_max = 3
 

@@ -5,12 +5,13 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
-from ryd_numerov import RydbergStateAlkali, RydbergStateAlkaliHyperfine
+from ryd_numerov import RydbergStateAlkaliHyperfine
+from ryd_numerov.angular import AngularKetLS
 from ryd_numerov.elements import BaseElement
 
 if TYPE_CHECKING:
-    from ryd_numerov.angular import AngularKetLS
     from ryd_numerov.angular.angular_matrix_element import AngularOperatorType
+    from ryd_numerov.radial import RadialState
     from ryd_numerov.units import MatrixElementType
 
 
@@ -29,24 +30,18 @@ def element_from_species(species: str) -> BaseElement:
     return BaseElement.from_species(species)
 
 
-def get_sorted_list_of_states(
-    species: str, n_min: int, n_max: int, *, use_hyperfine: bool = False
-) -> list[RydbergStateAlkali] | list[RydbergStateAlkaliHyperfine]:
+def get_sorted_list_of_states(species: str, n_min: int, n_max: int) -> list[RydbergStateAlkaliHyperfine]:
     """Create a list of quantum numbers sorted by their state energies."""
     element = element_from_species(species)
-    i_c = element.i_c if use_hyperfine else 0
 
-    list_of_states: list[RydbergStateAlkali] = []
+    list_of_states: list[RydbergStateAlkaliHyperfine] = []
     for n in range(n_min, n_max + 1):
         for l in range(n):
             if not element.is_allowed_shell(n, l, 1 / 2):
                 continue
             for j in np.arange(abs(l - 1 / 2), l + 1 / 2 + 1):
-                for f in np.arange(abs(j - i_c), j + i_c + 1):
-                    if use_hyperfine:
-                        state = RydbergStateAlkaliHyperfine(species, n, l, float(j), f=float(f))
-                    else:
-                        state = RydbergStateAlkali(species, n, l, float(j))
+                for f in np.arange(abs(j - element.i_c), j + element.i_c + 1):
+                    state = RydbergStateAlkaliHyperfine(species, n, l, float(j), f=float(f))
                     state.create_element(use_nist_data=True)
                     list_of_states.append(state)
 
@@ -54,8 +49,8 @@ def get_sorted_list_of_states(
 
 
 def calc_matrix_element_one_pair(
-    state1: RydbergStateAlkali | RydbergStateAlkaliHyperfine,
-    state2: RydbergStateAlkali | RydbergStateAlkaliHyperfine,
+    state1: RydbergStateAlkaliHyperfine,
+    state2: RydbergStateAlkaliHyperfine,
     matrix_elements_of_interest: dict[str, MatrixElementType],
 ) -> dict[str, float]:
     matrix_elements: dict[str, float] = {}
@@ -65,15 +60,19 @@ def calc_matrix_element_one_pair(
         if operator == "MAGNETIC_DIPOLE":
             # Magnetic dipole operator: mu = - mu_B (g_l <l_tot> + g_s <s_tot>)
             g_s = 2.0023192
-            value_s_tot = calc_reduced_angular_matrix_element_cached(state1.angular, state2.angular, "s_tot", k_angular)
+            value_s_tot = calc_reduced_angular_matrix_element_cached(
+                state1.angular.quantum_numbers, state2.angular.quantum_numbers, "s_tot", k_angular
+            )
             g_l = 1
-            value_l_tot = calc_reduced_angular_matrix_element_cached(state1.angular, state2.angular, "l_tot", k_angular)
+            value_l_tot = calc_reduced_angular_matrix_element_cached(
+                state1.angular.quantum_numbers, state2.angular.quantum_numbers, "l_tot", k_angular
+            )
             angular_matrix_element = g_s * value_s_tot + g_l * value_l_tot
             prefactor = -0.5  # - mu_B in atomic units
 
         elif operator in ["ELECTRIC_DIPOLE", "ELECTRIC_QUADRUPOLE", "ELECTRIC_OCTUPOLE", "ELECTRIC_QUADRUPOLE_ZERO"]:
             angular_matrix_element = calc_reduced_angular_matrix_element_cached(
-                state1.angular, state2.angular, "SPHERICAL", k_angular
+                state1.angular.quantum_numbers, state2.angular.quantum_numbers, "SPHERICAL", k_angular
             )
             prefactor = math.sqrt(4 * math.pi / (2 * k_angular + 1))  # e in atomic units is 1
         else:
@@ -93,13 +92,16 @@ def calc_matrix_element_one_pair(
     return matrix_elements
 
 
+@lru_cache(maxsize=100_000)
 def calc_reduced_angular_matrix_element_cached(
-    angular_ket_1: AngularKetLS,
-    angular_ket_2: AngularKetLS,
+    qns1: tuple[float, ...],
+    qns2: tuple[float, ...],
     operator: AngularOperatorType,
     k_angular: int,
 ) -> float:
-    return angular_ket_2.calc_reduced_matrix_element(angular_ket_1, operator, k_angular)
+    ket1 = AngularKetLS(*qns1)
+    ket2 = AngularKetLS(*qns2)
+    return ket2.calc_reduced_matrix_element(ket1, operator, k_angular)
 
 
 def calc_radial_matrix_element_cached(
@@ -128,18 +130,19 @@ def _calc_radial_matrix_element_cached(
 ) -> float:
     state1 = get_rydberg_state_cached(species, n1, l1, j1)
     state2 = get_rydberg_state_cached(species, n2, l2, j2)
-    return state1.radial.calc_matrix_element(state2.radial, k_radial, unit="a.u.")
+    return state1.calc_matrix_element(state2, k_radial, unit="a.u.")
 
 
 # Cache size should be one the order of N_MAX * 4 * 2
 # (since for each initial state we loop over all l' = l, l+1, l+2 and l+3 final states (and all j final))
 @lru_cache(maxsize=2_000)
-def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RydbergStateAlkali:
+def get_rydberg_state_cached(species: str, n: int, l: int, j: float) -> RadialState:
     """Get the cached rydberg state (where the wavefunction was already calculated)."""
-    state = RydbergStateAlkali(species, n, l, j)
+    element = element_from_species(species)
+    state = RydbergStateAlkaliHyperfine(species, n, l, j, f=j + element.i_c)
     state.create_element(use_nist_data=True)
     state.radial.create_wavefunction(sign_convention="n_l_1")
-    return state
+    return state.radial
 
 
 @lru_cache(maxsize=1)
