@@ -95,9 +95,11 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     print(f"Continuing comparison with {len(new)} matching states ...\n")
 
     # Compare all columns except energy
-    columns_to_compare = [col for col in new.columns if col != "energy"]
+    compare_with_tolerance = ["energy", "nu", "exp_nui"]
 
-    for col in columns_to_compare:
+    for col in new.columns:
+        if col in compare_with_tolerance:
+            continue
         if not compare_id and col == "id":
             continue
 
@@ -116,27 +118,28 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     print()
 
     # Compare energy values within tolerance
-    energy_diff = (new["energy"] - old["energy"]).abs()
-    tolerance = atol + rtol * old["energy"].abs()
-    energy_mask = energy_diff.gt(tolerance)
+    for col in compare_with_tolerance:
+        differences = (new[col] - old[col]).abs()
+        tolerance = atol + rtol * old[col].abs()
+        mask = differences.gt(tolerance)
 
-    print(f"Found {energy_mask.sum()} energy differences outside tolerance:")
-    if (verbosity in ["all", "diff"] or "energy" in verbosity) and energy_mask.any():
-        diff_states = energy_mask.loc[energy_mask].index
-        for state in diff_states:
-            new_energy = new.loc[state, "energy"]
-            old_energy = old.loc[state, "energy"]
-            diff_energy = energy_diff[state]
-            state_str = ", ".join([f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)])
-            print(f"  State {state_str}:")
-            print(f"    New energy: {new_energy:.12f}")
-            print(f"    Old energy: {old_energy:.12f}")
-            print(f"    Absolute difference: {diff_energy:.2e}")
-            print(f"    Relative difference: {diff_energy / abs(old_energy):.2e}")
+        print(f"Found {mask.sum()} {col} differences outside tolerance:")
+        if (verbosity in ["all", "diff"] or col in verbosity) and mask.any():
+            diff_states = mask.loc[mask].index
+            for state in diff_states:
+                new = new.loc[state, col]
+                old = old.loc[state, col]
+                diff = differences[state]
+                state_str = ", ".join([f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)])
+                print(f"  State {state_str}:")
+                print(f"    New {col}: {new:.12f}")
+                print(f"    Old {col}: {old:.12f}")
+                print(f"    Absolute difference: {diff:.2e}")
+                print(f"    Relative difference: {diff / abs(old):.2e}")
 
-    max_rdiff = (energy_diff / old["energy"].abs()).max()
-    print(f"Maximum absolute energy difference: {energy_diff.max():.2e}")
-    print(f"Maximum relative energy difference: {max_rdiff:.2e}")
+        max_rdiff = (differences / old[col].abs()).max()
+        print(f"Maximum absolute {col} difference: {differences.max():.2e}")
+        print(f"Maximum relative {col} difference: {max_rdiff:.2e}")
 
 
 if __name__ == "__main__":
