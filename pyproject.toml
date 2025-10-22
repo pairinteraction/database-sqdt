@@ -18,12 +18,24 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-ryd-numerov = { git = "https://github.com/pairinteraction/ryd-numerov", rev = "ce4ebc4b41e2b762451ba74cbb9ed8d6bbaff2d6" }
+ryd-numerov = { path = "ryd-numerov", editable = true }
 
 [project.optional-dependencies]
 mypy = [
   "mypy >= 1.14",
   "pandas-stubs >= 2.2.3"
+]
+jupyter = [
+  "pip",
+  "ipykernel",
+]
+benchmark = [
+  "py-spy",
+]
+
+[dependency-groups]
+dev = [
+  "generate-database-sqdt[mypy,jupyter,benchmark]",
 ]
 
 [project.scripts]
