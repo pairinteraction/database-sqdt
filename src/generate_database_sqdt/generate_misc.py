@@ -1,6 +1,5 @@
 import logging
 import sqlite3
-from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -57,4 +56,3 @@ def populate_wigner_table(f_max: float, kappa_max: int, conn: "sqlite3.Connectio
 
     conn.executemany(f"INSERT INTO wigner VALUES ({', '.join(['?'] * len(wigner_data[0]))})", wigner_data)
     logger.info("Created the 'wigner' table (%s rows)", conn.execute("SELECT COUNT(*) FROM wigner").fetchone()[0])
-
