@@ -22,10 +22,19 @@ def main() -> None:
         if not (new_path / f"{table_name}.parquet").exists() or not (old_path / f"{table_name}.parquet").exists():
             print(f"\nSkipping {table_name} as it does not exist in either the new or the old path.")
             continue
-        compare_matrix_elements_table(table_name, new_path, old_path, max_delta_n=3, min_n=16, max_n=80, verbose=False)
+        compare_matrix_elements_table(
+            table_name,
+            new_path,
+            old_path,
+            max_delta_n=3,
+            min_n=16,
+            max_n=80,
+            verbose=False,
+            only_compare_absolute_values=False,
+        )
 
 
-def compare_matrix_elements_table(
+def compare_matrix_elements_table(  # noqa: C901
     table_name: str,
     new_path: Path,
     old_path: Path,
@@ -35,6 +44,7 @@ def compare_matrix_elements_table(
     max_delta_n: int = 3,
     min_n: int = 1,
     max_n: int = 999,
+    only_compare_absolute_values: bool = False,
     verbose: bool = False,
 ) -> None:
     """Compare the matrix elements table of two versions of the database.
@@ -105,7 +115,10 @@ def compare_matrix_elements_table(
     print(f"  Common values: {new.shape[0]}")
 
     # Compare val values within tolerance
-    val_diff = (new["val"] - old["val"]).abs()
+    if only_compare_absolute_values:
+        val_diff = (new["val"].abs() - old["val"].abs()).abs()
+    else:
+        val_diff = (new["val"] - old["val"]).abs()
     tolerance = atol + rtol * old["val"].abs()
     val_mask = val_diff.gt(tolerance)
 
@@ -122,9 +135,9 @@ def compare_matrix_elements_table(
             print(f"      Absolute difference: {diff_val:.2e}")
             print(f"      Relative difference: {diff_val / abs(old_val):.2e}")
 
-    max_rdiff = (val_diff / old["val"].abs()).max()
+    rdiff = val_diff / old["val"].abs()
     print(f"  Maximum absolute val difference: {val_diff.max():.2e}")
-    print(f"  Maximum relative val difference: {max_rdiff:.2e}")
+    print(f"  Min/Max relative val difference: {rdiff.min():.2e} / {rdiff.max():.2e}")
 
 
 if __name__ == "__main__":
