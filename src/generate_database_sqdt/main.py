@@ -240,13 +240,15 @@ def populate_matrix_elements_table(
                 continue
 
             id_tuple = (id1, id2) if id1 <= id2 else (id2, id1)
-            me_one_pair = calc_matrix_element_one_pair(state1, state2, MATRIX_ELEMENTS_OF_INTEREST)
+            states = (state1, state2) if id1 <= id2 else (state2, state1)
+
+            me_one_pair = calc_matrix_element_one_pair(states[0], states[1], MATRIX_ELEMENTS_OF_INTEREST)
             for tkey, me in me_one_pair.items():
                 matrix_elements[tkey].append((*id_tuple, me))
 
             if id1 != id2:
                 id_tuple = (id_tuple[1], id_tuple[0])
-                me_one_pair = calc_matrix_element_one_pair(state2, state1, MATRIX_ELEMENTS_OF_INTEREST)
+                me_one_pair = calc_matrix_element_one_pair(states[1], states[0], MATRIX_ELEMENTS_OF_INTEREST)
                 for tkey, me in me_one_pair.items():
                     matrix_elements[tkey].append((*id_tuple, me))
 
