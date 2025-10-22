@@ -15,3 +15,4 @@ playground/
 # Ignore the generated databases
 database/
 profiling/
+profiling*.svg
