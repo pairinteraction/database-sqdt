@@ -27,11 +27,11 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
     - name: Run generate_database.py
       run: uv run generate_database ${{ matrix.species }} --directory database --n-max 220 ${{ matrix.extra_args }}
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: database-${{ matrix.species }}
         path: |
@@ -49,7 +49,7 @@ jobs:
 
     steps:
     - name: Download all the database files
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         path: database
         pattern: database-*
