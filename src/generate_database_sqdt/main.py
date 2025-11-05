@@ -11,19 +11,19 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import ryd_numerov
-from ryd_numerov import RydbergStateAlkaliHyperfine
+from ryd_numerov import RydbergStateAlkali
+from ryd_numerov.species import SpeciesObject
 
 from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.generate_misc import create_tables_for_misc
 from generate_database_sqdt.utils import (
     calc_matrix_element_one_pair,
-    element_from_species,
-    get_rydberg_state_cached,
+    get_radial_state_cached,
     get_sorted_list_of_states,
 )
 
 if TYPE_CHECKING:
-    from ryd_numerov.units import MatrixElementType
+    from ryd_numerov.units import MatrixElementOperator
 
 
 class WarningsAsExceptionsHandler(logging.Handler):
@@ -41,12 +41,13 @@ class WarningsAsExceptionsHandler(logging.Handler):
 logger = logging.getLogger(__name__)
 
 
-MATRIX_ELEMENTS_OF_INTEREST: dict[str, MatrixElementType] = {  # key: (operator, k_radial, k_angular)
-    "matrix_elements_d": "ELECTRIC_DIPOLE",
-    "matrix_elements_q": "ELECTRIC_QUADRUPOLE",
-    "matrix_elements_o": "ELECTRIC_OCTUPOLE",
-    "matrix_elements_q0": "ELECTRIC_QUADRUPOLE_ZERO",
-    "matrix_elements_mu": "MAGNETIC_DIPOLE",
+MATRIX_ELEMENTS_OF_INTEREST: dict[str, MatrixElementOperator] = {
+    # "key": "operator"
+    "matrix_elements_d": "electric_dipole",
+    "matrix_elements_q": "electric_quadrupole",
+    "matrix_elements_o": "electric_octupole",
+    "matrix_elements_q0": "electric_quadrupole_zero",
+    "matrix_elements_mu": "magnetic_dipole",
 }
 
 
@@ -57,14 +58,14 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=("Example:\n  uv run generate_database.py Rb --log-level INFO\n"),
     )
-    parser.add_argument("species", help="The species to generate the database for.")
+    parser.add_argument("species", help="The species name to generate the database for.")
     parser.add_argument(
         "--n-min",
         default=1,
         type=int,
         help="The minimal principal quantum number n for the states to be included in the database. "
-        "This is used for elements, where the low lying states do not converge nicely, so we exclude those states. "
-        "Default 1 will start with the ground state configuration of the specific element (e.g. n_min=5 for Rb).",
+        "This is used for species, where the low lying states do not converge nicely, so we exclude those states. "
+        "Default 1 will start with the ground state configuration of the specific species (e.g. n_min=5 for Rb).",
     )
     parser.add_argument(
         "--n-max",
@@ -121,7 +122,7 @@ def main() -> None:
     logger.info("Time taken: %.2f seconds", time.perf_counter() - time_start)
 
 
-def configure_logging(log_level: str, species: str, *, warnings_as_exceptions: bool) -> None:
+def configure_logging(log_level: str, species_name: str, *, warnings_as_exceptions: bool) -> None:
     """Initialize the logger."""
     root_logger = logging.getLogger()
     if root_logger.hasHandlers():
@@ -134,7 +135,7 @@ def configure_logging(log_level: str, species: str, *, warnings_as_exceptions: b
     root_logger.addHandler(stream_handler)
 
     file_formatter = logging.Formatter("%(levelname)s: %(message)s")
-    log_file = Path(f"{species}.log")
+    log_file = Path(f"{species_name}.log")
     log_file.parent.mkdir(parents=True, exist_ok=True)
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(file_formatter)
@@ -145,10 +146,10 @@ def configure_logging(log_level: str, species: str, *, warnings_as_exceptions: b
 
 
 def create_tables_for_one_species(
-    species: str, n_min: int, n_max: int, max_delta_n: int = 10, all_n_up_to: int = 30
+    species_name: str, n_min: int, n_max: int, max_delta_n: int = 10, all_n_up_to: int = 30
 ) -> None:
     """Create database for a given species."""
-    logger.info("Start creating database for %s and version v%s", species, __version__)
+    logger.info("Start creating database for %s and version v%s", species_name, __version__)
     logger.info("n-min=%d", n_min)
     logger.info("n-max=%d", n_max)
     logger.info("max_delta_n=%d", max_delta_n)
@@ -158,31 +159,34 @@ def create_tables_for_one_species(
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
         conn.executescript(database_sql_file.read_text(encoding="utf-8"))
-        list_of_states = get_sorted_list_of_states(species, n_min, n_max)
-        populate_states_table(list_of_states, conn)
-        populate_matrix_elements_table(list_of_states, conn, max_delta_n, all_n_up_to)
+        list_of_states = get_sorted_list_of_states(species_name, n_min, n_max)
+        populate_states_table(list_of_states, conn)  # type: ignore [arg-type]
+        populate_matrix_elements_table(list_of_states, conn, max_delta_n, all_n_up_to)  # type: ignore [arg-type]
     logger.info("Size of %s: %.6f megabytes", db_file, db_file.stat().st_size * 1e-6)
 
-    element = element_from_species(species)
+    species = SpeciesObject.from_name(species_name)
     with sqlite3.connect(db_file) as conn:
         for tkey in ["states", *MATRIX_ELEMENTS_OF_INTEREST.keys()]:
             parquet_file = Path(f"{tkey}.parquet")
             table = pd.read_sql_query(f"SELECT * FROM {tkey}", conn)
             if tkey == "states":
                 table = table.astype({"is_j_total_momentum": bool, "is_calculated_with_mqdt": bool})
-                table["is_j_total_momentum"] = element.i_c == 0
+                table["is_j_total_momentum"] = species.i_c == 0 or species.i_c is None
                 table["is_calculated_with_mqdt"] = False
             table.to_parquet(parquet_file, index=False, compression="zstd")
             logger.info("Size of %s: %.6f megabytes", parquet_file, parquet_file.stat().st_size * 1e-6)
             if logging.getLogger().isEnabledFor(logging.INFO):
                 table.info(verbose=True)
-                with Path(f"{species}.log").open("a") as buf:
+                with Path(f"{species_name}.log").open("a") as buf:
                     table.info(buf=buf)
 
-    logger.info("get_rydberg_state_cached: %s", get_rydberg_state_cached.cache_info())
+    logger.info("get_radial_state_cached: %s", get_radial_state_cached.cache_info())
 
 
-def populate_states_table(list_of_states: list[RydbergStateAlkaliHyperfine], conn: sqlite3.Connection) -> None:
+def populate_states_table(
+    list_of_states: list[RydbergStateAlkali],  # | list[RydbergStateAlkalineLS]
+    conn: sqlite3.Connection,
+) -> None:
     """Populate the states table with data for a given species."""
     states_data = []
     for ids, state in enumerate(list_of_states):
@@ -192,7 +196,7 @@ def populate_states_table(list_of_states: list[RydbergStateAlkaliHyperfine], con
         states_data.append(
             (
                 ids,  # id, will be set later
-                state.element.get_ionization_energy() + state.get_energy("a.u."),  # energy
+                state.species.get_ionization_energy() + state.get_energy("a.u."),  # energy
                 (-1) ** state.l,  # parity = (-1)^l
                 state.n,  # n: quantum number
                 state.get_nu(),  # nu = NStar for sqdt
@@ -220,7 +224,10 @@ def populate_states_table(list_of_states: list[RydbergStateAlkaliHyperfine], con
 
 
 def populate_matrix_elements_table(
-    list_of_states: list[RydbergStateAlkaliHyperfine], conn: sqlite3.Connection, max_delta_n: int, all_n_up_to: int
+    list_of_states: list[RydbergStateAlkali],  # | list[RydbergStateAlkalineLS]
+    conn: sqlite3.Connection,
+    max_delta_n: int,
+    all_n_up_to: int,
 ) -> None:
     k_angular_max = 3
 
