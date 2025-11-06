@@ -118,7 +118,8 @@ def main() -> None:
     if args.species == "misc":
         create_tables_for_misc(f_max=args.n_max, kappa_max=3)
     else:
-        create_tables_for_one_species(args.species, args.n_min, args.n_max)
+        species = args.species.replace("_sqdt", "")
+        create_tables_for_one_species(species, args.n_min, args.n_max)
     logger.info("Time taken: %.2f seconds", time.perf_counter() - time_start)
 
 
