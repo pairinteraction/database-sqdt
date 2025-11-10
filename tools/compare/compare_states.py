@@ -3,6 +3,29 @@ from typing import Literal
 
 import pandas as pd
 
+COLUMNS: list[str] = [
+    "parity",
+    "n",
+    "f",
+    "exp_l",
+    "exp_j",
+    "exp_s",
+    "exp_l_ryd",
+    "exp_j_ryd",
+    "std_nui",
+    "std_l",
+    "std_j",
+    "std_s",
+    "std_l_ryd",
+    "std_j_ryd",
+    "is_j_total_momentum",
+    "is_calculated_with_mqdt",
+    "underspecified_channel_contribution",
+    "energy",
+    "nu",
+    "exp_nui",
+]
+
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
@@ -10,7 +33,7 @@ def main() -> None:
     old_path = Path(f"{name}_v1.1")
     new_path = Path(f"{name}_v1.2")
 
-    compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbosity="states")
+    compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbosity="none")
 
 
 def compare_states_table(  # noqa: C901, PLR0912, PLR0915
@@ -22,7 +45,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     min_n: int = 1,
     max_n: int = 90,
     compare_id: bool = False,
-    verbosity: Literal["all", "diff", "states"],
+    verbosity: Literal["none", "all", "diff", "states"],
 ) -> None:
     """Compare the states table of two versions of the database.
 
@@ -52,6 +75,13 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
         print(f"{key.capitalize()} states table:")
         print(f"  Table shape: {states.shape}; Columns: {list(states.columns)}\n")
 
+    missing_cols = [col for col in COLUMNS if col not in states_dict["new"].columns]
+    if len(missing_cols) > 0:
+        raise ValueError(f"New states table is missing columns: {missing_cols}")
+    missing_cols = [col for col in states_dict["new"].columns if col not in COLUMNS and col != "id"]
+    if len(missing_cols) > 0:
+        print(f"Warning: New states table has extra columns: {missing_cols}")
+
     multi_index_columns = ["n", "exp_l", "exp_j"]
     if "mqdt" in str(new_path):
         multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
@@ -62,7 +92,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
                 states[col] = states[col].round(decimals)
 
     for key, states in states_dict.items():
-        states_dict[key] = states.set_index(multi_index_columns, verify_integrity=True)
+        states_dict[key] = states.set_index(multi_index_columns, verify_integrity=True, drop=False)
 
     # Check if both tables have the same states
     new, old = states_dict["new"], states_dict["old"]
@@ -97,7 +127,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     # Compare all columns except energy
     compare_with_tolerance = ["energy", "nu", "exp_nui"]
 
-    for col in new.columns:
+    for col in COLUMNS:
         if col in compare_with_tolerance:
             continue
         if not compare_id and col == "id":
@@ -108,7 +138,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
             print(f"No differences found in column '{col}'.")
             continue
         print(f"Found {differences.sum()} differences in column '{col}':")
-        if verbosity in ["all", "diff"] or col in verbosity:
+        if verbosity in ["all", "diff"]:
             diff_states = differences.loc[differences].index
             for state in diff_states:
                 state_str = ", ".join([f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)])
@@ -118,13 +148,15 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     print()
 
     # Compare energy values within tolerance
-    for col in compare_with_tolerance:
+    for col in COLUMNS:
+        if col not in compare_with_tolerance:
+            continue
         differences = (new[col] - old[col]).abs()
         tolerance = atol + rtol * old[col].abs()
         mask = differences.gt(tolerance)
 
         print(f"Found {mask.sum()} {col} differences outside tolerance:")
-        if (verbosity in ["all", "diff"] or col in verbosity) and mask.any():
+        if verbosity in ["all", "diff"] and mask.any():
             diff_states = mask.loc[mask].index
             for state in diff_states:
                 new = new.loc[state, col]
