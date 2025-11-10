@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import ryd_numerov
-from ryd_numerov.angular.utils import calc_wigner_3j
+import rydstate
+from rydstate.angular.utils import calc_wigner_3j
 
 from generate_database_sqdt import __version__, database_sql_file
 
@@ -17,7 +17,7 @@ def create_tables_for_misc(f_max: float, kappa_max: int) -> None:
     logger.info("Start creating misc database for version v%s", __version__)
     logger.info("f_max=%d", f_max)
     logger.info("kappa_max=%d", kappa_max)
-    logger.info("ryd_numerov.__version__=%s", ryd_numerov.__version__)
+    logger.info("rydstate.__version__=%s", rydstate.__version__)
 
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:

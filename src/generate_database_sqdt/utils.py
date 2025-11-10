@@ -5,15 +5,15 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
-from ryd_numerov import RydbergStateAlkali, RydbergStateAlkalineLS
-from ryd_numerov.angular import AngularKetLS
-from ryd_numerov.radial import RadialState
-from ryd_numerov.species import SpeciesObject
-from ryd_numerov.units import MatrixElementOperatorRanks
+from rydstate import RydbergStateAlkali, RydbergStateAlkalineLS
+from rydstate.angular import AngularKetLS
+from rydstate.radial import RadialState
+from rydstate.species import SpeciesObject
+from rydstate.units import MatrixElementOperatorRanks
 
 if TYPE_CHECKING:
-    from ryd_numerov.angular.angular_matrix_element import AngularOperatorType
-    from ryd_numerov.units import MatrixElementOperator
+    from rydstate.angular.angular_matrix_element import AngularOperatorType
+    from rydstate.units import MatrixElementOperator
 
 
 def get_sorted_list_of_states(
