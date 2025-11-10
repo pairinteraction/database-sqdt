@@ -1,3 +1,3 @@
-[submodule "ryd-numerov"]
-	path = ryd-numerov
-	url = git@github.com:pairinteraction/ryd-numerov.git
+[submodule "rydstate"]
+	path = RydState
+	url = git@github.com:pairinteraction/rydstate.git
