@@ -6,19 +6,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "generate-database-sqdt"
 dynamic = ["version"]
-description = "Generate the SQDT databases for the pairinteraction package by using the ryd-numerov package."
+description = "Generate the SQDT databases for the pairinteraction package by using the RydState package."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE.txt"]
 requires-python = ">=3.10"
 dependencies = [
-  "ryd-numerov >= 0.7",
+  "rydstate >= 0.9",
   "pandas[pyarrow] >= 2.2.3",
   "pairinteraction >= 2.1",
 ]
 
 [tool.uv.sources]
-ryd-numerov = { path = "ryd-numerov", editable = true }
+rydstate = { path = "RydState", editable = true }
 
 [project.optional-dependencies]
 mypy = [
@@ -36,6 +36,7 @@ benchmark = [
 [dependency-groups]
 dev = [
   "generate-database-sqdt[mypy,jupyter,benchmark]",
+  "ruff",
 ]
 
 [project.scripts]

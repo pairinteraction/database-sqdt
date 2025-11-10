@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pandas as pd
-import ryd_numerov
-from ryd_numerov import RydbergStateAlkali
-from ryd_numerov.species import SpeciesObject
+import rydstate
+from rydstate import RydbergStateAlkali
+from rydstate.species import SpeciesObject
 
 from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.generate_misc import create_tables_for_misc
@@ -23,7 +23,7 @@ from generate_database_sqdt.utils import (
 )
 
 if TYPE_CHECKING:
-    from ryd_numerov.units import MatrixElementOperator
+    from rydstate.units import MatrixElementOperator
 
 
 class WarningsAsExceptionsHandler(logging.Handler):
@@ -88,7 +88,7 @@ def main() -> None:
     parser.add_argument(
         "--warnings-as-exceptions",
         action="store_true",
-        help="Treat warnings in ryd_numerov as exceptions.",
+        help="Treat warnings in rydstate as exceptions.",
     )
     parser.add_argument(
         "--overwrite",
@@ -155,7 +155,7 @@ def create_tables_for_one_species(
     logger.info("n-max=%d", n_max)
     logger.info("max_delta_n=%d", max_delta_n)
     logger.info("all_n_up_to=%d", all_n_up_to)
-    logger.info("ryd_numerov.__version__=%s", ryd_numerov.__version__)
+    logger.info("rydstate.__version__=%s", rydstate.__version__)
 
     db_file = Path("database.db")
     with sqlite3.connect(db_file) as conn:
