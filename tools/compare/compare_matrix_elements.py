@@ -13,9 +13,9 @@ TABLE_NAMES: list[str] = [
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "mqdt/Yb174_mqdt"
-    old_path = Path(f"{name}_v1.1")
-    new_path = Path(f"{name}_v1.2")
+    name = "sqdt/"
+    old_path = Path(f"{name}Sr88_singlet_v1.2")
+    new_path = Path(f"{name}Sr88_sqdt_v1.3")
 
     print(f"Comparing matrix elements tables:\n  New: {new_path}\n  Old: {old_path}")
     for table_name in TABLE_NAMES:
@@ -70,7 +70,7 @@ def compare_matrix_elements_table(  # noqa: C901
     for key, table in table_dict.items():
         print(f"  {key.capitalize()} table shape: {table.shape} with columns: {list(table.columns)}")
 
-    multi_index_columns = ["n", "exp_l", "exp_j"]
+    multi_index_columns = ["n", "exp_l", "exp_j", "exp_s"]
     if "mqdt" in str(new_path):
         multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
         # round index columns to avoid floating point issues

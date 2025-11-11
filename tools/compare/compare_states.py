@@ -29,9 +29,9 @@ COLUMNS: list[str] = [
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "mqdt/Yb174_mqdt"
-    old_path = Path(f"{name}_v1.1")
-    new_path = Path(f"{name}_v1.2")
+    name = "sqdt/"
+    old_path = Path(f"{name}Sr88_triplet_v1.2")
+    new_path = Path(f"{name}Sr88_sqdt_v1.3")
 
     compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbosity="none")
 
@@ -82,7 +82,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     if len(missing_cols) > 0:
         print(f"Warning: New states table has extra columns: {missing_cols}")
 
-    multi_index_columns = ["n", "exp_l", "exp_j"]
+    multi_index_columns = ["n", "exp_l", "exp_j", "exp_s"]
     if "mqdt" in str(new_path):
         multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
         # round index columns to avoid floating point issues
@@ -125,7 +125,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     print(f"Continuing comparison with {len(new)} matching states ...\n")
 
     # Compare all columns except energy
-    compare_with_tolerance = ["energy", "nu", "exp_nui"]
+    compare_with_tolerance = ["energy", "nu", "exp_nui", "exp_j_ryd", "std_j_ryd"]
 
     for col in COLUMNS:
         if col in compare_with_tolerance:
