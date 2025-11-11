@@ -20,7 +20,9 @@ jobs:
           - species: Sr88_sqdt
             extra_args: ""  # no warnings as exceptions, due to bad convergence
           - species: Yb174_sqdt
-            extra_args: ""  # no warnings as exceptions, due to bad convergence
+            # no warnings as exceptions, due to bad convergence
+            # use n_min=30, since some quantum defects are only valid for n>=28
+            extra_args: "--n-min 30"
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
