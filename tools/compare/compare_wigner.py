@@ -5,8 +5,9 @@ import pandas as pd
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    new_path = Path("misc_v1.2")
-    old_path = Path("misc_v1.1")
+    name = "misc/misc"
+    old_path = Path(f"{name}_v1.2")
+    new_path = Path(f"{name}_v1.3")
 
     if "misc" not in new_path.name or "misc" not in old_path.name:
         raise ValueError("This script is only for comparing misc folders.")

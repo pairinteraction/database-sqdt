@@ -1,3 +1,7 @@
 *.parquet
 *.db
 *.log
+misc/
+sqdt/
+mqdt/
+*.ipynb
