@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from rydstate import RydbergStateAlkali, RydbergStateAlkalineJJ, RydbergStateAlkalineLS
-from rydstate.angular import AngularKetLS
+from rydstate.angular import AngularKetJJ, AngularKetLS
 from rydstate.radial import RadialState
 from rydstate.species import SpeciesObject
 from rydstate.units import MatrixElementOperatorRanks
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from rydstate.units import MatrixElementOperator
 
 
-MIN_L_TO_USE_JJ_COUPLING = 5
+MIN_L_TO_USE_JJ_COUPLING = 6
 
 
 def get_sorted_list_of_states(
@@ -72,7 +72,9 @@ def _get_sorted_list_of_states_alkaline(  # noqa: C901, PLR0912
                         raise RuntimeError("JJ coupling singlet and triplet differ in is_allowed_shell check.")
                     continue
                 for j_r in [l - s_r, l + s_r]:
-                    for j_tot in range(abs(j_r - s_c), j_r + s_c + 1):  # type: ignore [call-overload]
+                    if not (j_r + s_c).is_integer():
+                        raise RuntimeError("Non-integer j_r + s_c encountered.")
+                    for j_tot in range(int(abs(j_r - s_c)), int(j_r + s_c + 1)):
                         for f in np.arange(abs(j_tot - i_c), j_tot + i_c + 1):
                             state = RydbergStateAlkalineJJ(species, n, l, j_r=j_r, j_tot=j_tot, f_tot=float(f))
                             list_of_states.append(state)
@@ -151,7 +153,7 @@ def calc_reduced_angular_matrix_element_cached(
     operator: AngularOperatorType,
     k_angular: int,
 ) -> float:
-    ket_classes = {"LS": AngularKetLS, "JJ": AngularKetLS}
+    ket_classes = {"LS": AngularKetLS, "JJ": AngularKetJJ}
     ket1 = ket_classes[coupling_scheme1](*qns1)  # type: ignore[arg-type]
     ket2 = ket_classes[coupling_scheme2](*qns2)  # type: ignore[arg-type]
     return ket2.calc_reduced_matrix_element(ket1, operator, k_angular)

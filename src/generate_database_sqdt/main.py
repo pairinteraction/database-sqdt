@@ -203,15 +203,15 @@ def populate_states_table(
                 state.get_nu(),  # nu = NStar for sqdt
                 angular_ket.f_tot,  # f: quantum number
                 state.get_nu(),  # exp_nui = nu for sqdt
-                angular_ket.l_tot,  # exp_l = l
+                angular_state.calc_exp_qn("l_tot"),  # exp_l = l
                 angular_ket.j_tot,  # exp_j = j
-                angular_ket.s_tot,  # exp_s = s
+                angular_state.calc_exp_qn("s_tot"),  # exp_s = s
                 angular_ket.l_r,  # exp_l_ryd = l for sqdt
                 angular_state.calc_exp_qn("j_r"),  # exp_j_ryd = j for sqdt only one valence electron
                 0,  # std_nui = 0
-                0,  # std_l = 0
+                angular_state.calc_std_qn("l_tot"),  # std_l = 0
                 0,  # std_j = 0
-                0,  # std_s = 0
+                angular_state.calc_std_qn("s_tot"),  # std_s = 0
                 0,  # std_l_ryd = 0
                 angular_state.calc_std_qn("j_r"),  # std_j_ryd = 0 for sqdt and only one valence electron
                 "True",  # is_j_total_momentum = True for no hyperfine splitting
