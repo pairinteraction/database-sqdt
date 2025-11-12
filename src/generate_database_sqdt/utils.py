@@ -5,20 +5,24 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
-from rydstate import RydbergStateAlkali, RydbergStateAlkalineLS
+from rydstate import RydbergStateAlkali, RydbergStateAlkalineJJ, RydbergStateAlkalineLS
 from rydstate.angular import AngularKetLS
 from rydstate.radial import RadialState
 from rydstate.species import SpeciesObject
 from rydstate.units import MatrixElementOperatorRanks
 
 if TYPE_CHECKING:
+    from rydstate.angular.angular_ket import CouplingScheme
     from rydstate.angular.angular_matrix_element import AngularOperatorType
     from rydstate.units import MatrixElementOperator
 
 
+MIN_L_TO_USE_JJ_COUPLING = 5
+
+
 def get_sorted_list_of_states(
     species_name: str, n_min: int, n_max: int
-) -> list[RydbergStateAlkali] | list[RydbergStateAlkalineLS]:
+) -> list[RydbergStateAlkali | RydbergStateAlkalineLS | RydbergStateAlkalineJJ]:
     """Create a list of quantum numbers sorted by their state energies."""
     species = SpeciesObject.from_name(species_name)
     if species.number_valence_electrons == 1:
@@ -45,18 +49,33 @@ def _get_sorted_list_of_states_alkali(species: SpeciesObject, n_min: int, n_max:
     return sorted(list_of_states, key=lambda x: x.get_energy("a.u."))
 
 
-def _get_sorted_list_of_states_alkaline(species: SpeciesObject, n_min: int, n_max: int) -> list[RydbergStateAlkalineLS]:
+def _get_sorted_list_of_states_alkaline(  # noqa: C901, PLR0912
+    species: SpeciesObject, n_min: int, n_max: int
+) -> list[RydbergStateAlkalineLS | RydbergStateAlkalineJJ]:
     i_c = species.i_c if species.i_c is not None else 0
-    list_of_states: list[RydbergStateAlkalineLS] = []
-    for s in [0, 1]:
-        for n in range(n_min, n_max + 1):
-            for l in range(n):
-                if not species.is_allowed_shell(n, l, s):
+    s_r, s_c = 1 / 2, 1 / 2
+    list_of_states: list[RydbergStateAlkalineLS | RydbergStateAlkalineJJ] = []
+    for n in range(n_min, n_max + 1):
+        for l in range(n):
+            if l < MIN_L_TO_USE_JJ_COUPLING:  # low-l states use LS coupling
+                for s_tot in [0, 1]:
+                    if not species.is_allowed_shell(n, l, s_tot):
+                        continue
+                    for j_tot in range(abs(l - s_tot), l + s_tot + 1):
+                        for f in np.arange(abs(j_tot - i_c), j_tot + i_c + 1):
+                            state = RydbergStateAlkalineLS(species, n, l, s_tot=s_tot, j_tot=j_tot, f_tot=float(f))
+                            list_of_states.append(state)
+
+            else:  # high-l states use jj coupling
+                if not all(species.is_allowed_shell(n, l, s_tot) for s_tot in [0, 1]):
+                    if any(species.is_allowed_shell(n, l, s_tot) for s_tot in [0, 1]):
+                        raise RuntimeError("JJ coupling singlet and triplet differ in is_allowed_shell check.")
                     continue
-                for j in range(abs(l - s), l + s + 1):
-                    for f in np.arange(abs(j - i_c), j + i_c + 1):
-                        state = RydbergStateAlkalineLS(species, n, l, s_tot=s, j_tot=j, f_tot=float(f))
-                        list_of_states.append(state)
+                for j_r in [l - s_r, l + s_r]:
+                    for j_tot in range(abs(j_r - s_c), j_r + s_c + 1):  # type: ignore [call-overload]
+                        for f in np.arange(abs(j_tot - i_c), j_tot + i_c + 1):
+                            state = RydbergStateAlkalineJJ(species, n, l, j_r=j_r, j_tot=j_tot, f_tot=float(f))
+                            list_of_states.append(state)
 
     return sorted(list_of_states, key=lambda x: x.get_energy("a.u."))
 
@@ -74,18 +93,33 @@ def calc_matrix_element_one_pair(
             # Magnetic dipole operator: mu = - mu_B (g_l <l_tot> + g_s <s_tot>)
             g_s = 2.0023192
             value_s_tot = calc_reduced_angular_matrix_element_cached(
-                state1.angular.quantum_numbers, state2.angular.quantum_numbers, "s_tot", k_angular
+                state1.angular.coupling_scheme,
+                state1.angular.quantum_numbers,
+                state2.angular.coupling_scheme,
+                state2.angular.quantum_numbers,
+                "s_tot",
+                k_angular,
             )
             g_l = 1
             value_l_tot = calc_reduced_angular_matrix_element_cached(
-                state1.angular.quantum_numbers, state2.angular.quantum_numbers, "l_tot", k_angular
+                state1.angular.coupling_scheme,
+                state1.angular.quantum_numbers,
+                state2.angular.coupling_scheme,
+                state2.angular.quantum_numbers,
+                "l_tot",
+                k_angular,
             )
             angular_matrix_element = g_s * value_s_tot + g_l * value_l_tot
             prefactor = -0.5  # - mu_B in atomic units
 
         elif operator in ["electric_dipole", "electric_quadrupole", "electric_octupole", "electric_quadrupole_zero"]:
             angular_matrix_element = calc_reduced_angular_matrix_element_cached(
-                state1.angular.quantum_numbers, state2.angular.quantum_numbers, "spherical", k_angular
+                state1.angular.coupling_scheme,
+                state1.angular.quantum_numbers,
+                state2.angular.coupling_scheme,
+                state2.angular.quantum_numbers,
+                "spherical",
+                k_angular,
             )
             prefactor = math.sqrt(4 * math.pi / (2 * k_angular + 1))  # e in atomic units is 1
         else:
@@ -110,13 +144,16 @@ def calc_matrix_element_one_pair(
 
 @lru_cache(maxsize=100_000)
 def calc_reduced_angular_matrix_element_cached(
+    coupling_scheme1: CouplingScheme,
     qns1: tuple[float, ...],
+    coupling_scheme2: CouplingScheme,
     qns2: tuple[float, ...],
     operator: AngularOperatorType,
     k_angular: int,
 ) -> float:
-    ket1 = AngularKetLS(*qns1)  # type: ignore[arg-type]
-    ket2 = AngularKetLS(*qns2)  # type: ignore[arg-type]
+    ket_classes = {"LS": AngularKetLS, "JJ": AngularKetLS}
+    ket1 = ket_classes[coupling_scheme1](*qns1)  # type: ignore[arg-type]
+    ket2 = ket_classes[coupling_scheme2](*qns2)  # type: ignore[arg-type]
     return ket2.calc_reduced_matrix_element(ket1, operator, k_angular)
 
 
