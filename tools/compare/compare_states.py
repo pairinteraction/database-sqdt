@@ -25,6 +25,7 @@ COLUMNS: list[str] = [
     "nu",
     "exp_nui",
 ]
+VERBOSE_COLUMNS = []
 
 
 def main() -> None:
@@ -39,7 +40,7 @@ def main() -> None:
 def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     new_path: Path,
     old_path: Path,
-    rtol: float = 1e-5,
+    rtol: float = 1e-8,
     atol: float = 1e-10,
     *,
     min_n: int = 1,
@@ -125,10 +126,10 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     print(f"Continuing comparison with {len(new)} matching states ...\n")
 
     # Compare all columns except energy
-    compare_with_tolerance = ["energy", "nu", "exp_nui", "exp_j_ryd", "std_j_ryd"]
+    columns_compare_exact = ["n", "f", "is_j_total_momentum", "is_calculated_with_mqdt"]
 
     for col in COLUMNS:
-        if col in compare_with_tolerance:
+        if col not in columns_compare_exact:
             continue
         if not compare_id and col == "id":
             continue
@@ -138,7 +139,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
             print(f"No differences found in column '{col}'.")
             continue
         print(f"Found {differences.sum()} differences in column '{col}':")
-        if verbosity in ["all", "diff"]:
+        if verbosity in ["all", "diff"] or col in VERBOSE_COLUMNS:
             diff_states = differences.loc[differences].index
             for state in diff_states:
                 state_str = ", ".join([f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)])
@@ -147,27 +148,27 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
                 print(f"    Old value: {old.loc[state, col]}")
     print()
 
-    # Compare energy values within tolerance
+    # Compare numeric values within tolerance
     for col in COLUMNS:
-        if col not in compare_with_tolerance:
+        if col in columns_compare_exact:
             continue
         differences = (new[col] - old[col]).abs()
         tolerance = atol + rtol * old[col].abs()
         mask = differences.gt(tolerance)
 
         print(f"Found {mask.sum()} {col} differences outside tolerance:")
-        if verbosity in ["all", "diff"] and mask.any():
+        if (verbosity in ["all", "diff"] and mask.any()) or col in VERBOSE_COLUMNS:
             diff_states = mask.loc[mask].index
             for state in diff_states:
-                new = new.loc[state, col]
-                old = old.loc[state, col]
+                new_val = new.loc[state, col]
+                old_val = old.loc[state, col]
                 diff = differences[state]
                 state_str = ", ".join([f"{col}={state[i]}" for i, col in enumerate(multi_index_columns)])
                 print(f"  State {state_str}:")
-                print(f"    New {col}: {new:.12f}")
-                print(f"    Old {col}: {old:.12f}")
+                print(f"    New {col}: {new_val:.12f}")
+                print(f"    Old {col}: {old_val:.12f}")
                 print(f"    Absolute difference: {diff:.2e}")
-                print(f"    Relative difference: {diff / abs(old):.2e}")
+                print(f"    Relative difference: {diff / abs(old_val):.2e}")
 
         max_rdiff = (differences / old[col].abs()).max()
         print(f"Maximum absolute {col} difference: {differences.max():.2e}")
