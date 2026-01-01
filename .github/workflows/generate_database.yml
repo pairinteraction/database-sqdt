@@ -31,7 +31,7 @@ jobs:
     - name: Run generate_database.py
       run: uv run generate_database ${{ matrix.species }} --directory database --n-max ${{ matrix.n_max }} ${{ matrix.extra_args }}
     - name: Upload artifacts
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: database-${{ matrix.species }}
         path: |
@@ -49,7 +49,7 @@ jobs:
 
     steps:
     - name: Download all the database files
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         path: database
         pattern: database-*
