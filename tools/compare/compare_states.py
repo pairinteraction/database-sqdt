@@ -85,11 +85,11 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
 
     multi_index_columns = ["n", "exp_l", "exp_j", "exp_s"]
     if "mqdt" in str(new_path):
-        multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
+        multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_j_ryd"]
         # round index columns to avoid floating point issues
         for states in states_dict.values():
             for col in multi_index_columns:
-                decimals = {"nu": 1, "energy": 6}.get(col, 3)
+                decimals = {"nu": 2, "energy": 6}.get(col, 3)
                 states[col] = states[col].round(decimals)
 
     for key, states in states_dict.items():

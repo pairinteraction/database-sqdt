@@ -72,7 +72,7 @@ def compare_matrix_elements_table(  # noqa: C901
 
     multi_index_columns = ["n", "exp_l", "exp_j", "exp_s"]
     if "mqdt" in str(new_path):
-        multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_s"]
+        multi_index_columns = ["nu", "exp_l", "exp_j", "f", "exp_j_ryd"]
         # round index columns to avoid floating point issues
         for col in multi_index_columns:
             decimals = {"nu": 1}.get(col, 3)
