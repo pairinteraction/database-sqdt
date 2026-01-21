@@ -13,9 +13,10 @@ TABLE_NAMES: list[str] = [
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "sqdt/"
-    old_path = Path(f"{name}Sr88_singlet_v1.2")
-    new_path = Path(f"{name}Sr88_sqdt_v1.3")
+    name = "mqdt/"
+    species = "Yb174_mqdt"
+    old_path = Path(name) / "PR_get_nu_limits" / f"{species}_v1.1"
+    new_path = Path(name) / "test" / f"{species}_v1.1"
 
     print(f"Comparing matrix elements tables:\n  New: {new_path}\n  Old: {old_path}")
     for table_name in TABLE_NAMES:
@@ -27,8 +28,8 @@ def main() -> None:
             new_path,
             old_path,
             max_delta_n=3,
-            min_n=16,
-            max_n=80,
+            min_n=1,
+            max_n=110,
             verbose=False,
             only_compare_absolute_values=False,
         )

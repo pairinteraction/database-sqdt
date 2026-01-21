@@ -30,9 +30,10 @@ VERBOSE_COLUMNS = []
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "sqdt/"
-    old_path = Path(f"{name}Sr88_triplet_v1.2")
-    new_path = Path(f"{name}Sr88_sqdt_v1.3")
+    name = "mqdt/"
+    species = "Sr87_mqdt"
+    old_path = Path(name) / "PR_get_nu_limits" / f"{species}_v1.1"
+    new_path = Path(name) / "PR11_get_models_dynamically" / f"{species}_v1.1"
 
     compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbosity="none")
 
@@ -44,7 +45,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     atol: float = 1e-10,
     *,
     min_n: int = 1,
-    max_n: int = 90,
+    max_n: int = 220,
     compare_id: bool = False,
     verbosity: Literal["none", "all", "diff", "states"],
 ) -> None:
@@ -69,12 +70,11 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
         "old": pd.read_parquet(old_path / "states.parquet"),
     }
     for key, states in states_dict.items():
-        states_dict[key] = states[states["n"] >= min_n]
-        states_dict[key] = states[states["n"] <= max_n]
-
-    for key, states in states_dict.items():
         print(f"{key.capitalize()} states table:")
         print(f"  Table shape: {states.shape}; Columns: {list(states.columns)}\n")
+
+    for key, states in states_dict.items():
+        states_dict[key] = states[(states["n"] >= min_n) & (states["n"] <= max_n)]
 
     missing_cols = [col for col in COLUMNS if col not in states_dict["new"].columns]
     if len(missing_cols) > 0:
@@ -94,6 +94,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
 
     for key, states in states_dict.items():
         states_dict[key] = states.set_index(multi_index_columns, verify_integrity=True, drop=False)
+        # set verify_integrity to False if there are duplicate states
 
     # Check if both tables have the same states
     new, old = states_dict["new"], states_dict["old"]
@@ -156,6 +157,9 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
         tolerance = atol + rtol * old[col].abs()
         mask = differences.gt(tolerance)
 
+        if mask.sum() == 0 and differences.max() < 1e-15:
+            print(f"No differences found in column '{col}'.")
+            continue
         print(f"Found {mask.sum()} {col} differences outside tolerance:")
         if (verbosity in ["all", "diff"] and mask.any()) or col in VERBOSE_COLUMNS:
             diff_states = mask.loc[mask].index
