@@ -15,8 +15,8 @@ jobs:
         species: [misc, H, Li, Na, K, Rb, Cs, Sr88_sqdt]
         include:
           - extra_args: "--warnings-as-exceptions"
-          # use n_max=220 for tags and master, but only n_max=100 for PRs, etc.
-          - n_max: ${{ (startsWith(github.ref, 'refs/tags/') || contains(github.ref, 'master')) && 220 || 100 }}
+          # use n_max=220 for tags and main, but only n_max=100 for PRs, etc.
+          - n_max: ${{ (startsWith(github.ref, 'refs/tags/') || contains(github.ref, 'main')) && 220 || 100 }}
           - species: Sr88_sqdt
             extra_args: ""  # no warnings as exceptions, due to bad convergence
     name: ${{ matrix.species }}
