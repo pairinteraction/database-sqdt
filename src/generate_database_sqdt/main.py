@@ -17,7 +17,9 @@ from rydstate.species import SpeciesObject
 from generate_database_sqdt import __version__, database_sql_file
 from generate_database_sqdt.generate_misc import create_tables_for_misc
 from generate_database_sqdt.utils import (
+    _calc_radial_matrix_element_cached,
     calc_matrix_element_one_pair,
+    calc_reduced_angular_matrix_element_cached,
     get_radial_state_cached,
     get_sorted_list_of_states,
 )
@@ -182,6 +184,10 @@ def create_tables_for_one_species(
                     table.info(buf=buf)
 
     logger.info("get_radial_state_cached: %s", get_radial_state_cached.cache_info())
+    logger.info(
+        "calc_reduced_angular_matrix_element_cached: %s", calc_reduced_angular_matrix_element_cached.cache_info()
+    )
+    logger.info("_calc_radial_matrix_element_cached: %s", _calc_radial_matrix_element_cached.cache_info())
 
 
 def populate_states_table(
