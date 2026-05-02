@@ -149,7 +149,7 @@ def configure_logging(log_level: str, species_name: str, *, warnings_as_exceptio
 
 
 def create_tables_for_one_species(
-    species_name: str, n_min: int, n_max: int, max_delta_n: int = 10, all_n_up_to: int = 30
+    species_name: str, n_min: int, n_max: int, max_delta_n: int = 1000, all_n_up_to: int = 30
 ) -> None:
     """Create database for a given species."""
     logger.info("Start creating database for %s and version v%s", species_name, __version__)
