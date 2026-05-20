@@ -25,7 +25,7 @@ COLUMNS: list[str] = [
     "nu",
     "exp_nui",
 ]
-VERBOSE_COLUMNS = []
+VERBOSE_COLUMNS: list[str] = []
 
 
 def main() -> None:
@@ -157,7 +157,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
         tolerance = atol + rtol * old[col].abs()
         mask = differences.gt(tolerance)
 
-        if mask.sum() == 0 and differences.max() < 1e-15:
+        if mask.sum() == 0 and differences.max() < 1e-15:  # noqa: PLR2004
             print(f"No differences found in column '{col}'.")
             continue
         print(f"Found {mask.sum()} {col} differences outside tolerance:")

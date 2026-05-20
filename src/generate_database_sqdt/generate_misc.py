@@ -49,7 +49,7 @@ def populate_wigner_table(f_max: float, kappa_max: int, conn: "sqlite3.Connectio
                             m_final = m_initial + q
                             if not -f_final <= m_final <= f_final:
                                 continue
-                            wigner = calc_wigner_3j_with_symmetries(f_final, kappa, f_initial, -m_final, q, m_initial)  # type: ignore [arg-type]
+                            wigner = calc_wigner_3j_with_symmetries(f_final, kappa, f_initial, -m_final, q, m_initial)
                             wigner *= (-1) ** (f_final - m_final)
                             if wigner == 0:
                                 continue

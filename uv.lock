@@ -2236,7 +2236,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arc-alkali-rydberg-calculator", marker = "extra == 'comparison'", specifier = "<3.9" },
     { name = "ipykernel", marker = "extra == 'jupyter'" },
     { name = "jupyter", marker = "extra == 'docs'", specifier = ">=1.1" },
     { name = "matplotlib", marker = "extra == 'docs'", specifier = ">=3.7.4" },
@@ -2248,7 +2247,6 @@ requires-dist = [
     { name = "nbsphinx", marker = "extra == 'docs'", specifier = ">=0.9" },
     { name = "numba", specifier = ">=0.60" },
     { name = "numpy", specifier = ">=2.0" },
-    { name = "pairinteraction", marker = "extra == 'comparison'", specifier = "<1.0" },
     { name = "pint", specifier = ">=0.24" },
     { name = "pip", marker = "extra == 'jupyter'" },
     { name = "pytest", marker = "extra == 'tests'", specifier = ">=8.0" },
@@ -2260,8 +2258,9 @@ requires-dist = [
     { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = ">=1.24" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=2.0" },
     { name = "sympy", specifier = ">=1.13" },
+    { name = "typing-extensions", marker = "extra == 'mypy'", specifier = ">=4.10" },
 ]
-provides-extras = ["tests", "docs", "comparison", "jupyter", "mypy"]
+provides-extras = ["tests", "docs", "jupyter", "mypy"]
 
 [package.metadata.requires-dev]
 dev = [
