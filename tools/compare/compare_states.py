@@ -30,10 +30,10 @@ VERBOSE_COLUMNS: list[str] = []
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "mqdt/"
-    species = "Sr87_mqdt"
-    old_path = Path(name) / "PR_get_nu_limits" / f"{species}_v1.1"
-    new_path = Path(name) / "PR11_get_models_dynamically" / f"{species}_v1.1"
+    name = "sqdt/"
+    species = "Rb"
+    old_path = Path(name) / "main" / f"{species}_v1.2"
+    new_path = Path(name) / "v1.3" / f"{species}_v1.3"
 
     compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbosity="none")
 
@@ -93,8 +93,9 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
                 states[col] = states[col].round(decimals)
 
     for key, states in states_dict.items():
-        states_dict[key] = states.set_index(multi_index_columns, verify_integrity=True, drop=False)
-        # set verify_integrity to False if there are duplicate states
+        states_dict[key] = states.set_index(multi_index_columns, drop=False)
+        if not states_dict[key].index.is_unique:
+            raise ValueError(f"Duplicate state index for {key}")
 
     # Check if both tables have the same states
     new, old = states_dict["new"], states_dict["old"]
