@@ -125,7 +125,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
         print(f"Warning: Number of matching states differs: {len(new)} vs {len(old)}")
     print(f"Continuing comparison with {len(new)} matching states ...\n")
 
-    # Compare all columns except energy
+    # Compare all columns that should be exactly equal
     columns_compare_exact = ["n", "f", "is_j_total_momentum", "is_calculated_with_mqdt"]
 
     for col in COLUMNS:
