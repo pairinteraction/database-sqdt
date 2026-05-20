@@ -1,7 +1,18 @@
+# Ignore build and cache directories
+__pycache__/
+.ruff_cache/
+.mypy_cache/
+.venv/
+.pytest_cache/
+
+# Ignore local development files
+playground/
+
+# Ignore uv lock
+uv.lock
+
+# Ignore the database and log files
 *.parquet
+*.db-journal
 *.db
-*.log
-misc/
-sqdt/
-mqdt/
-*.ipynb
+log

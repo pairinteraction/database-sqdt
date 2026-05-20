@@ -1,0 +1,34 @@
+[project]
+name = "compare-databases"
+version = "0.2.0"
+description = "Compare databases produced by the RydState package."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas[pyarrow] >= 2.2.3",
+]
+
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["ALL"]
+extend-ignore = [
+  "PLR0913",  # Too many arguments in function definition (... > 5)
+  "D1",  # remove once more docstrings are added
+  "TRY003",  # Avoid specifying long messages outside the exception class
+  "EM",  # Exceptions ...
+  "COM812",  # (missing-trailing-comma) incompatible with ruff format
+  "D203",  # (incorrect-blank-line-before-class) incompatible with D211: no-blank-line-before-class
+  "D213",  # (multi-line-summary-second-line) incompatible with D212: multi-line-summary-first-line
+  "T201",  # allow print
+  "INP001",  # no package
+]
+
+
+[tool.mypy]
+strict = true
+disallow_untyped_decorators = false
+ignore_missing_imports = true
