@@ -18,11 +18,11 @@ jobs:
       matrix:
         species: [H, Li, Na, K, Rb, Cs, Sr88_sqdt]
         include:
-          - extra_args: "--max-delta-n 10 --all-n-up-to 30 --warnings-as-exceptions"
-          # use n_max=220 for tags and main, but only n_max=100 for PRs, etc.
-          - arg_max: ${{ (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main') && '--n-max 220' || '--n-max 100' }}
+          - extra_args: "--warnings-as-exceptions"
+          # use n-max=120 for tags and main, but only n-max=80 for PRs, etc.
+          - arg_max: ${{ (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main') && '--n-max 120' || '--n-max 80' }}
           - species: Sr88_sqdt
-            extra_args: "--max-delta-n 10 --all-n-up-to 30 "  # no warnings as exceptions, due to bad convergence
+            extra_args: ""
     name: ${{ matrix.species }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
@@ -65,8 +65,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
-      # use f-max=220 for tags and main, but only f-max=120 for PRs, etc.
-      ARG_MAX: ${{ (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main') && '--f-max 220' || '--f-max 120' }}
+      # use f-max=220 for tags and main, but only f-max=80 for PRs, etc.
+      ARG_MAX: ${{ (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main') && '--f-max 220' || '--f-max 80' }}
     steps:
     - uses: actions/checkout@v7
       with:
