@@ -8,8 +8,8 @@ on:
     types: [opened, reopened, synchronize]
 
 env:
-  # set to "true" to run generate_database with profiling it via py-spy
-  USE_PYSPY: "false"
+  # profile via py-spy on pull requests and branch pushes, but not on tags
+  USE_PYSPY: ${{ startsWith(github.ref, 'refs/tags/') && 'false' || 'true' }}
 
 jobs:
   run-generate-database-sqdt:
