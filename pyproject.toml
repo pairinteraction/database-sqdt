@@ -1,6 +1,6 @@
 [project]
 name = "database-sqdt"
-version = "1.4"
+version = "2.0"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE.txt"]
