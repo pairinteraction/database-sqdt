@@ -7,19 +7,29 @@ COLUMNS: list[str] = [
     "parity",
     "n",
     "f",
+    "exp_i_core",
+    "exp_s_core",
+    "exp_l_core",
+    "exp_j_core",
+    "exp_f_core",
+    "exp_s_ryd",
+    "exp_l_ryd",
+    "exp_j_ryd",
     "exp_l",
     "exp_j",
     "exp_s",
-    "exp_l_ryd",
-    "exp_j_ryd",
     "std_nui",
+    "std_i_core",
+    "std_s_core",
+    "std_l_core",
+    "std_j_core",
+    "std_f_core",
+    "std_s_ryd",
+    "std_l_ryd",
+    "std_j_ryd",
     "std_l",
     "std_j",
     "std_s",
-    "std_l_ryd",
-    "std_j_ryd",
-    "is_j_total_momentum",
-    "is_calculated_with_mqdt",
     "underspecified_channel_contribution",
     "energy",
     "nu",
@@ -30,10 +40,9 @@ VERBOSE_COLUMNS: list[str] = []
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "sqdt/"
     species = "Rb"
-    old_path = Path(name) / "main" / f"{species}_v1.2"
-    new_path = Path(name) / "v1.3" / f"{species}_v1.3"
+    old_path = Path("../../database/v1.4") / f"{species}_v1.4"
+    new_path = Path("../../database/v2.0_test") / f"{species}_v2.0"
 
     compare_states_table(new_path, old_path, min_n=1, compare_id=False, verbosity="none")
 
@@ -76,12 +85,15 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     for key, states in states_dict.items():
         states_dict[key] = states[(states["n"] >= min_n) & (states["n"] <= max_n)]
 
-    missing_cols = [col for col in COLUMNS if col not in states_dict["new"].columns]
-    if len(missing_cols) > 0:
-        raise ValueError(f"New states table is missing columns: {missing_cols}")
-    missing_cols = [col for col in states_dict["new"].columns if col not in COLUMNS and col != "id"]
-    if len(missing_cols) > 0:
-        print(f"Warning: New states table has extra columns: {missing_cols}")
+    # only compare the columns that exist in both tables (they may differ between database versions)
+    columns = [col for col in COLUMNS if col in states_dict["new"].columns and col in states_dict["old"].columns]
+    for key, states in states_dict.items():
+        skipped_cols = [col for col in COLUMNS if col not in states.columns]
+        if len(skipped_cols) > 0:
+            print(f"Warning: {key.capitalize()} states table is missing columns (skipping them): {skipped_cols}")
+        extra_cols = [col for col in states.columns if col not in COLUMNS and col != "id"]
+        if len(extra_cols) > 0:
+            print(f"Warning: {key.capitalize()} states table has extra columns: {extra_cols}")
 
     multi_index_columns = ["n", "exp_l", "exp_j", "exp_s"]
     if "mqdt" in str(new_path):
@@ -130,7 +142,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     # Compare all columns that should be exactly equal
     columns_compare_exact = ["n", "f", "is_j_total_momentum", "is_calculated_with_mqdt"]
 
-    for col in COLUMNS:
+    for col in columns:
         if col not in columns_compare_exact:
             continue
         if not compare_id and col == "id":
@@ -151,7 +163,7 @@ def compare_states_table(  # noqa: C901, PLR0912, PLR0915
     print()
 
     # Compare numeric values within tolerance
-    for col in COLUMNS:
+    for col in columns:
         if col in columns_compare_exact:
             continue
         differences = (new[col] - old[col]).abs()

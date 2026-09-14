@@ -8,15 +8,15 @@ TABLE_NAMES: list[str] = [
     "matrix_elements_o",
     "matrix_elements_q0",
     "matrix_elements_mu",
+    "matrix_elements_m",
 ]
 
 
 def main() -> None:
     # CHANGE THESE PATHS, TO THE FOLDERS YOU WANT TO COMPARE
-    name = "sqdt/"
     species = "Rb"
-    old_path = Path(name) / "main" / f"{species}_v1.2"
-    new_path = Path(name) / "v1.3" / f"{species}_v1.3"
+    old_path = Path("../../database/v1.4") / f"{species}_v1.4"
+    new_path = Path("../../database/v2.0_test") / f"{species}_v2.0"
 
     print(f"Comparing matrix elements tables:\n  New: {new_path}\n  Old: {old_path}")
     for table_name in TABLE_NAMES:
@@ -82,7 +82,8 @@ def compare_matrix_elements_table(  # noqa: C901
 
     for key, state in states_dict.items():
         # Create a new unique index for each state based on quantum numbers
-        state["unique_id"] = state.apply(lambda row: "_".join([str(row[col]) for col in multi_index_columns]), axis=1)
+        # (cast to float first, so the string representation does not depend on the dtypes of the other columns)
+        state["unique_id"] = state[multi_index_columns].astype(float).astype(str).agg("_".join, axis=1)
         id_to_newid = dict(zip(state["id"], state["unique_id"], strict=True))
         id_to_n = dict(zip(state["id"], state["n"], strict=True))
 
